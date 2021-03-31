@@ -54,9 +54,11 @@ if (CXXOPTS_ENABLE_WARNINGS)
     cxxopts_enable_warnings()
 endif()
 
-add_library(cxxopts INTERFACE)
+add_library(cxxopts STATIC)
 add_library(cxxopts::cxxopts ALIAS cxxopts)
 add_subdirectory(include)
+
+target_sources(cxxopts PRIVATE "src/cxxopts.cpp")
 
 # Link against the ICU library when requested
 if(CXXOPTS_USE_UNICODE_HELP)

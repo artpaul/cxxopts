@@ -1,8 +1,8 @@
 #include "catch.hpp"
-
-#include <initializer_list>
-
 #include "cxxopts.hpp"
+
+#include <cstring>
+#include <initializer_list>
 
 class Argv {
   public:
@@ -465,12 +465,12 @@ TEST_CASE("Overflow on boundary", "[integer]")
   int8_t si;
   uint8_t ui;
 
-  CHECK_THROWS_AS((integer_parser("128", si)), cxxopts::argument_incorrect_type&);
-  CHECK_THROWS_AS((integer_parser("-129", si)), cxxopts::argument_incorrect_type&);
-  CHECK_THROWS_AS((integer_parser("256", ui)), cxxopts::argument_incorrect_type&);
-  CHECK_THROWS_AS((integer_parser("-0x81", si)), cxxopts::argument_incorrect_type&);
-  CHECK_THROWS_AS((integer_parser("0x80", si)), cxxopts::argument_incorrect_type&);
-  CHECK_THROWS_AS((integer_parser("0x100", ui)), cxxopts::argument_incorrect_type&);
+  CHECK_THROWS_AS((parse_value("128", si)), cxxopts::argument_incorrect_type&);
+  CHECK_THROWS_AS((parse_value("-129", si)), cxxopts::argument_incorrect_type&);
+  CHECK_THROWS_AS((parse_value("256", ui)), cxxopts::argument_incorrect_type&);
+  CHECK_THROWS_AS((parse_value("-0x81", si)), cxxopts::argument_incorrect_type&);
+  CHECK_THROWS_AS((parse_value("0x80", si)), cxxopts::argument_incorrect_type&);
+  CHECK_THROWS_AS((parse_value("0x100", ui)), cxxopts::argument_incorrect_type&);
 }
 
 TEST_CASE("Integer overflow", "[options]")
@@ -490,8 +490,8 @@ TEST_CASE("Integer overflow", "[options]")
   CHECK_THROWS_AS(options.parse(argc, argv), cxxopts::argument_incorrect_type&);
 
   int integer = 0;
-  CHECK_THROWS_AS((integer_parser("23423423423", integer)), cxxopts::argument_incorrect_type&);
-  CHECK_THROWS_AS((integer_parser("234234234234", integer)), cxxopts::argument_incorrect_type&);
+  CHECK_THROWS_AS((parse_value("23423423423", integer)), cxxopts::argument_incorrect_type&);
+  CHECK_THROWS_AS((parse_value("234234234234", integer)), cxxopts::argument_incorrect_type&);
 }
 
 TEST_CASE("Floats", "[options]")

@@ -237,10 +237,6 @@ int main(int argc, char** argv)
 }
 ```
 
-# Linking
-
-This is a header only library.
-
 # Requirements
 
 The only build requirement is a C++ compiler that supports C++11 features such as:
