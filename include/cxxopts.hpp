@@ -51,6 +51,12 @@ THE SOFTWARE.
 # define CXXOPTS_NODISCARD
 #endif
 
+#if __cplusplus >= 201103L
+# define CXXOPTS_NORETURN [[noreturn]]
+#else
+# define CXXOPTS_NORETURND
+#endif
+
 #ifndef CXXOPTS_VECTOR_DELIMITER
 # define CXXOPTS_VECTOR_DELIMITER ','
 #endif
@@ -207,6 +213,7 @@ static constexpr struct {
   };
 
   template <typename T>
+  CXXOPTS_NORETURN
   void throw_or_mimic(const std::string& text) {
     static_assert(std::is_base_of<std::exception, T>::value,
                   "throw_or_mimic only works on std::exception and "
@@ -555,14 +562,17 @@ static constexpr struct {
     bool
     has_default() const noexcept;
 
+    CXXOPTS_NODISCARD
+    bool
+    has_value() const noexcept;
+
     template <typename T>
     const T&
     as() const {
-      if (m_value == nullptr) {
+      if (!has_value()) {
         throw_or_mimic<option_has_no_value_exception>(
           m_long_name == nullptr ? "" : *m_long_name);
       }
-
 #ifdef CXXOPTS_NO_RTTI
       return static_cast<const values::standard_value<T>&>(*m_value).get();
 #else
@@ -636,10 +646,10 @@ static constexpr struct {
     unmatched() const;
 
   private:
-    NameHashMap m_keys;
-    ParsedHashMap m_values;
-    std::vector<KeyValue> m_sequential;
-    std::vector<std::string> m_unmatched;
+    NameHashMap keys_;
+    ParsedHashMap values_;
+    std::vector<KeyValue> sequential_;
+    std::vector<std::string> unmatched_;
   };
 
   struct Option {
@@ -678,8 +688,7 @@ static constexpr struct {
       const char* const* argv,
       int& current,
       const std::shared_ptr<OptionDetails>& value,
-      const std::string& name
-);
+      const std::string& name);
 
     void
     add_to_option(

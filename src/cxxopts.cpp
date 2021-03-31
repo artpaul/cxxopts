@@ -778,11 +778,16 @@ OptionValue::count() const noexcept {
 #endif
 #endif
 
-// TODO: maybe default options should count towards the number of arguments
 CXXOPTS_NODISCARD
 bool
 OptionValue::has_default() const noexcept {
   return m_default;
+}
+
+CXXOPTS_NODISCARD
+bool
+OptionValue::has_value() const noexcept {
+  return m_value != nullptr;
 }
 
 void
@@ -818,55 +823,53 @@ ParseResult::ParseResult(
     std::vector<KeyValue> sequential,
     std::vector<std::string>&& unmatched_args
   )
-  : m_keys(std::move(keys))
-  , m_values(std::move(values))
-  , m_sequential(std::move(sequential))
-  , m_unmatched(std::move(unmatched_args))
+  : keys_(std::move(keys))
+  , values_(std::move(values))
+  , sequential_(std::move(sequential))
+  , unmatched_(std::move(unmatched_args))
 {
 }
 
 size_t
-ParseResult::count(const std::string& o) const
-{
-  auto iter = m_keys.find(o);
-  if (iter == m_keys.end()) {
+ParseResult::count(const std::string& o) const {
+  const auto ki = keys_.find(o);
+  if (ki == keys_.end()) {
     return 0;
   }
 
-  auto viter = m_values.find(iter->second);
-
-  if (viter == m_values.end()) {
+  const auto vi = values_.find(ki->second);
+  if (vi == values_.end()) {
     return 0;
   }
 
-  return viter->second.count();
+  return vi->second.count();
 }
 
 const OptionValue&
 ParseResult::operator[](const std::string& option) const {
-  auto iter = m_keys.find(option);
+  const auto ki = keys_.find(option);
 
-  if (iter == m_keys.end()) {
+  if (ki == keys_.end()) {
     throw_or_mimic<option_not_present_exception>(option);
   }
 
-  auto viter = m_values.find(iter->second);
+  const auto vi = values_.find(ki->second);
 
-  if (viter == m_values.end()) {
+  if (vi == values_.end()) {
     throw_or_mimic<option_not_present_exception>(option);
   }
 
-  return viter->second;
+  return vi->second;
 }
 
 const std::vector<KeyValue>&
 ParseResult::arguments() const {
-  return m_sequential;
+  return sequential_;
 }
 
 const std::vector<std::string>&
 ParseResult::unmatched() const {
-  return m_unmatched;
+  return unmatched_;
 }
 
 Option::Option(
