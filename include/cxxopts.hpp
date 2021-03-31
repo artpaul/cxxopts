@@ -285,6 +285,10 @@ static constexpr struct {
     template <typename T>
     void
     parse_value(const std::string& text, std::vector<T>& value) {
+      if (text.empty()) {
+        value.push_back(T());
+        return;
+      }
       std::stringstream in{text};
       std::string token;
       while(!in.eof() && std::getline(in, token, CXXOPTS_VECTOR_DELIMITER)) {
