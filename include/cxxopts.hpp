@@ -106,19 +106,28 @@ static constexpr struct {
     has_default() const = 0;
 
     virtual bool
-    is_container() const = 0;
+    has_env() const = 0;
 
     virtual bool
     has_implicit() const = 0;
 
+    virtual bool
+    is_container() const = 0;
+
     virtual std::string
     get_default_value() const = 0;
+
+    virtual std::string
+    get_env_var() const = 0;
 
     virtual std::string
     get_implicit_value() const = 0;
 
     virtual std::shared_ptr<Value>
     default_value(const std::string& value) = 0;
+
+    virtual std::shared_ptr<Value>
+    env(const std::string& var) = 0;
 
     virtual std::shared_ptr<Value>
     implicit_value(const std::string& value) = 0;
@@ -371,6 +380,11 @@ static constexpr struct {
       }
 
       bool
+      has_env() const override {
+        return m_env;
+      }
+
+      bool
       has_implicit() const override {
         return m_implicit;
       }
@@ -379,6 +393,13 @@ static constexpr struct {
       default_value(const std::string& value) override {
         m_default = true;
         m_default_value = value;
+        return shared_from_this();
+      }
+
+      std::shared_ptr<Value>
+      env(const std::string& var) override {
+        m_env = true;
+        m_env_var = var;
         return shared_from_this();
       }
 
@@ -398,6 +419,11 @@ static constexpr struct {
       std::string
       get_default_value() const override {
         return m_default_value;
+      }
+
+      std::string
+      get_env_var() const override {
+        return m_env_var;
       }
 
       std::string
@@ -422,11 +448,13 @@ static constexpr struct {
       std::shared_ptr<T> m_result;
       T* m_store{};
 
+      std::string m_default_value;
+      std::string m_env_var;
+      std::string m_implicit_value;
+
       bool m_default{false};
       bool m_implicit{false};
-
-      std::string m_default_value;
-      std::string m_implicit_value;
+      bool m_env{false};
     };
 
     template <typename T>

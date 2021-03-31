@@ -25,6 +25,7 @@ THE SOFTWARE.
 
 #include "cxxopts.hpp"
 
+#include <cstdlib>
 #include <regex>
 
 //when we ask cxxopts to use Unicode, help strings are processed using ICU,
@@ -1184,6 +1185,12 @@ OptionParser::parse(int argc, const char* const* argv) {
       }
     } else {
       parse_no_value(detail);
+    }
+
+    if (value.has_env() && !store.count()){
+      if (const char* env = std::getenv(value.get_env_var().c_str())) {
+        store.parse(detail, std::string(env));
+      }
     }
   }
 
