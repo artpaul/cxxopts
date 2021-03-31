@@ -557,6 +557,9 @@ static constexpr struct {
     void
     parse_default(const std::shared_ptr<const OptionDetails>& details);
 
+    void
+    parse_no_value(const std::shared_ptr<const OptionDetails>& details);
+
     CXXOPTS_NODISCARD
     size_t
     count() const noexcept;
@@ -708,6 +711,9 @@ static constexpr struct {
 
     void
     parse_default(const std::shared_ptr<OptionDetails>& details);
+
+    void
+    parse_no_value(const std::shared_ptr<OptionDetails>& details);
 
   private:
     void finalise_aliases();
