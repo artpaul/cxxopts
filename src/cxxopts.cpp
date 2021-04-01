@@ -200,6 +200,14 @@ namespace cxxopts {
 namespace cxxopts {
 namespace {
 
+#ifdef _WIN32
+  const std::string LQUOTE("\'");
+  const std::string RQUOTE("\'");
+#else
+  const std::string LQUOTE("‘");
+  const std::string RQUOTE("’");
+#endif
+
 constexpr size_t OPTION_LONGEST = 30;
 constexpr size_t OPTION_DESC_GAP = 2;
 
@@ -208,6 +216,13 @@ const std::basic_regex<char> option_matcher
 
 const std::basic_regex<char> option_specifier
     ("(([[:alnum:]]),)?[ ]*([[:alnum:]][-_[:alnum:]]*)?");
+
+const std::basic_regex<char> integer_pattern
+  ("(-)?(0x)?([0-9a-zA-Z]+)|((0x)?0)");
+const std::basic_regex<char> truthy_pattern
+  ("(t|T)(rue)?|1");
+const std::basic_regex<char> falsy_pattern
+  ("(f|F)(alse)?|0");
 
 String
 format_option (
@@ -360,16 +375,6 @@ format_description(
 
 } // namespace
 
-namespace {
-#ifdef _WIN32
-  const std::string LQUOTE("\'");
-  const std::string RQUOTE("\'");
-#else
-  const std::string LQUOTE("‘");
-  const std::string RQUOTE("’");
-#endif
-} // namespace
-
 OptionException::OptionException(std::string message)
   : m_message(std::move(message))
 {
@@ -488,15 +493,7 @@ option_required_exception::option_required_exception(const std::string& option)
 
 namespace values {
 namespace {
-  std::basic_regex<char> integer_pattern
-    ("(-)?(0x)?([0-9a-zA-Z]+)|((0x)?0)");
-  std::basic_regex<char> truthy_pattern
-    ("(t|T)(rue)?|1");
-  std::basic_regex<char> falsy_pattern
-    ("(f|F)(alse)?|0");
-} // namespace
 
-namespace detail {
 template <typename T, bool B>
 struct SignedCheck;
 
@@ -529,8 +526,6 @@ void
 check_signed_range(bool negative, U value, const std::string& text) {
   SignedCheck<T, std::numeric_limits<T>::is_signed>()(negative, value, text);
 }
-
-} // namespace detail
 
 template <typename R, typename T>
 void
@@ -593,7 +588,7 @@ integer_parser(const std::string& text, T& value) {
     result = next;
   }
 
-  detail::check_signed_range<T>(negative, result, text);
+  check_signed_range<T>(negative, result, text);
 
   if (negative) {
     checked_negate<T>(
@@ -605,6 +600,8 @@ integer_parser(const std::string& text, T& value) {
     value = static_cast<T>(result);
   }
 }
+
+} // namespace
 
 void
 parse_value(const std::string& text, uint8_t& value) {
