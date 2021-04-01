@@ -851,9 +851,9 @@ static constexpr struct {
     String m_help_string{};
     std::string m_custom_help;
     std::string m_positional_help;
+    size_t m_width;
     bool m_show_positional;
     bool m_allow_unrecognised;
-    size_t m_width;
     bool m_tab_expansion;
 
     std::shared_ptr<OptionMap> m_options;

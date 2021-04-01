@@ -210,6 +210,7 @@ namespace {
 
 constexpr size_t OPTION_LONGEST = 30;
 constexpr size_t OPTION_DESC_GAP = 2;
+constexpr size_t OPTION_PADDING = 2;
 
 const std::basic_regex<char> option_matcher
   ("--([[:alnum:]][-_[:alnum:]]+)(=(.*))?|-([[:alnum:]]+)");
@@ -225,13 +226,11 @@ const std::basic_regex<char> falsy_pattern
   ("(f|F)(alse)?|0");
 
 String
-format_option (
-  const HelpOptionDetails& o)
-{
+format_option(const HelpOptionDetails& o) {
   const auto& s = o.s;
   const auto& l = o.l;
 
-  String result = "  ";
+  String result(OPTION_PADDING, ' ');
 
   if (!s.empty()) {
     result += "-" + toLocalString(s);
@@ -280,25 +279,19 @@ format_description(
 
   if (tab_expansion) {
     String desc2;
-    auto size = size_t{ 0 };
-    for (auto c = std::begin(desc); c != std::end(desc); ++c)
-    {
-        if (*c == '\n')
-        {
+    size_t size = 0;
+    for (auto c = std::begin(desc); c != std::end(desc); ++c) {
+      if (*c == '\n') {
         desc2 += *c;
         size = 0;
-        }
-        else if (*c == '\t')
-        {
+      } else if (*c == '\t') {
         auto skip = 8 - size % 8;
         stringAppend(desc2, skip, ' ');
         size += skip;
-        }
-        else
-        {
+      } else {
         desc2 += *c;
         ++size;
-        }
+      }
     }
     desc = desc2;
   }
@@ -365,9 +358,8 @@ format_description(
   }
 
   //append whatever is left but ignore whitespace
-  if (!onlyWhiteSpace)
-  {
-  stringAppend(result, startLine, previous);
+  if (!onlyWhiteSpace) {
+    stringAppend(result, startLine, previous);
   }
 
   return result;
@@ -907,9 +899,9 @@ Options::Options(std::string program, std::string help_string)
   , m_help_string(toLocalString(std::move(help_string)))
   , m_custom_help("[OPTION...]")
   , m_positional_help("positional parameters")
+  , m_width(76)
   , m_show_positional(false)
   , m_allow_unrecognised(false)
-  , m_width(76)
   , m_tab_expansion(false)
   , m_options(std::make_shared<OptionMap>())
 {
@@ -1292,13 +1284,11 @@ Options::help_one_group(const std::string& g) const {
   }
 
   OptionHelp format;
-
   size_t longest = 0;
-
   String result;
 
   if (!g.empty()) {
-    result += toLocalString(" " + g + " options:\n");
+    result += toLocalString(g + "\n");
   }
 
   for (const auto& o : group->second.options) {
