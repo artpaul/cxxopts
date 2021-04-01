@@ -1390,7 +1390,12 @@ Options::generate_all_groups_help(String& result) const {
 
 std::string
 Options::help(const std::vector<std::string>& help_groups) const {
-  String result = m_help_string + "\nUsage:\n  " +
+  std::string result;
+
+  if (!m_help_string.empty()) {
+    result += m_help_string + "\n";
+  }
+  result += "usage: " +
     toLocalString(m_program) + " " + toLocalString(m_custom_help);
 
   if (!m_positional.empty() && !m_positional_help.empty()) {
