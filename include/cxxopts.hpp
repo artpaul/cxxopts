@@ -56,7 +56,7 @@ THE SOFTWARE.
 #if __cplusplus >= 201103L
 # define CXXOPTS_NORETURN [[noreturn]]
 #else
-# define CXXOPTS_NORETURND
+# define CXXOPTS_NORETURN
 #endif
 
 #ifndef CXXOPTS_VECTOR_DELIMITER

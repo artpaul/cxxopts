@@ -1,3 +1,5 @@
+.vs/
+.vscode/
 *.swp
 build*
 CMakeCache.txt
