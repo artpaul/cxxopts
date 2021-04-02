@@ -1,5 +1,3 @@
-#pragma once
-
 /*
 
 Copyright (c) 2014, 2015, 2016, 2017 Jarryd Beck
@@ -153,7 +151,7 @@ static constexpr struct {
     what() const noexcept override;
 
   private:
-    const std::string m_message;
+    const std::string message_;
   };
 
   class OptionSpecException : public OptionException {
@@ -336,35 +334,35 @@ static constexpr struct {
 
     public:
       abstract_value()
-        : m_result(std::make_shared<T>())
-        , m_store(m_result.get())
+        : result_(std::make_shared<T>())
+        , store_(result_.get())
       {
       }
 
       explicit abstract_value(T* t)
-        : m_store(t)
+        : store_(t)
       {
       }
 
       abstract_value& operator=(const abstract_value&) = default;
 
       abstract_value(const abstract_value& rhs) {
-        if (rhs.m_result) {
-          m_result = std::make_shared<T>();
-          m_store = m_result.get();
+        if (rhs.result_) {
+          result_ = std::make_shared<T>();
+          store_ = result_.get();
         } else {
-          m_store = rhs.m_store;
+          store_ = rhs.store_;
         }
 
-        m_default = rhs.m_default;
-        m_implicit = rhs.m_implicit;
-        m_default_value = rhs.m_default_value;
-        m_implicit_value = rhs.m_implicit_value;
+        default_ = rhs.default_;
+        implicit_ = rhs.implicit_;
+        default_value_ = rhs.default_value_;
+        implicit_value_ = rhs.implicit_value_;
       }
 
       void
       parse(const std::string& text) const override {
-        parse_value(text, *m_store);
+        parse_value(text, *store_);
       }
 
       bool
@@ -374,64 +372,64 @@ static constexpr struct {
 
       void
       parse() const override {
-        parse_value(m_default_value, *m_store);
+        parse_value(default_value_, *store_);
       }
 
       bool
       has_default() const override {
-        return m_default;
+        return default_;
       }
 
       bool
       has_env() const override {
-        return m_env;
+        return env_;
       }
 
       bool
       has_implicit() const override {
-        return m_implicit;
+        return implicit_;
       }
 
       std::shared_ptr<Value>
       default_value(const std::string& value) override {
-        m_default = true;
-        m_default_value = value;
+        default_ = true;
+        default_value_ = value;
         return shared_from_this();
       }
 
       std::shared_ptr<Value>
       env(const std::string& var) override {
-        m_env = true;
-        m_env_var = var;
+        env_ = true;
+        env_var_ = var;
         return shared_from_this();
       }
 
       std::shared_ptr<Value>
       implicit_value(const std::string& value) override {
-        m_implicit = true;
-        m_implicit_value = value;
+        implicit_ = true;
+        implicit_value_ = value;
         return shared_from_this();
       }
 
       std::shared_ptr<Value>
       no_implicit_value() override {
-        m_implicit = false;
+        implicit_ = false;
         return shared_from_this();
       }
 
       std::string
       get_default_value() const override {
-        return m_default_value;
+        return default_value_;
       }
 
       std::string
       get_env_var() const override {
-        return m_env_var;
+        return env_var_;
       }
 
       std::string
       get_implicit_value() const override {
-        return m_implicit_value;
+        return implicit_value_;
       }
 
       bool
@@ -441,23 +439,23 @@ static constexpr struct {
 
       const T&
       get() const {
-        if (m_store == nullptr) {
-          return *m_result;
+        if (store_ == nullptr) {
+          return *result_;
         }
-        return *m_store;
+        return *store_;
       }
 
     protected:
-      std::shared_ptr<T> m_result;
-      T* m_store{};
+      std::shared_ptr<T> result_;
+      T* store_{};
 
-      std::string m_default_value;
-      std::string m_env_var;
-      std::string m_implicit_value;
+      std::string default_value_;
+      std::string env_var_;
+      std::string implicit_value_;
 
-      bool m_default{false};
-      bool m_implicit{false};
-      bool m_env{false};
+      bool default_{false};
+      bool implicit_{false};
+      bool env_{false};
     };
 
     template <typename T>
@@ -493,10 +491,10 @@ static constexpr struct {
     private:
       void
       set_default_and_implicit() {
-        m_default = true;
-        m_default_value = "false";
-        m_implicit = true;
-        m_implicit_value = "true";
+        default_ = true;
+        default_value_ = "false";
+        implicit_ = true;
+        implicit_value_ = "true";
       }
     };
   } // namespace values
@@ -516,8 +514,8 @@ static constexpr struct {
   class OptionDetails {
   public:
     OptionDetails(
-      std::string short_,
-      std::string long_,
+      std::string short_name,
+      std::string long_name,
       String desc,
       std::shared_ptr<const Value> val);
 
@@ -549,12 +547,12 @@ static constexpr struct {
     hash() const noexcept;
 
   private:
-    std::string m_short;
-    std::string m_long;
-    String m_desc;
-    std::shared_ptr<const Value> m_value;
-    int m_count;
-    size_t m_hash;
+    std::string short_;
+    std::string long_;
+    String desc_;
+    std::shared_ptr<const Value> value_;
+    int count_;
+    size_t hash_;
   };
 
   struct HelpOptionDetails {
@@ -607,12 +605,12 @@ static constexpr struct {
     as() const {
       if (!has_value()) {
         throw_or_mimic<option_has_no_value_exception>(
-          m_long_name == nullptr ? "" : *m_long_name);
+          long_name_ == nullptr ? "" : *long_name_);
       }
 #ifdef CXXOPTS_NO_RTTI
-      return static_cast<const values::standard_value<T>&>(*m_value).get();
+      return static_cast<const values::standard_value<T>&>(*value_).get();
 #else
-      return dynamic_cast<const values::standard_value<T>&>(*m_value).get();
+      return dynamic_cast<const values::standard_value<T>&>(*value_).get();
 #endif
     }
 
@@ -620,12 +618,12 @@ static constexpr struct {
     void
     ensure_value(const std::shared_ptr<const OptionDetails>& details);
 
-    const std::string* m_long_name{nullptr};
+    const std::string* long_name_{nullptr};
     // Holding this pointer is safe, since OptionValue's only exist
     // in key-value pairs, where the key has the string we point to.
-    std::shared_ptr<Value> m_value;
-    size_t m_count{0};
-    bool m_default{false};
+    std::shared_ptr<Value> value_;
+    size_t count_{0};
+    bool default_{false};
   };
 
   class KeyValue {
@@ -644,13 +642,13 @@ static constexpr struct {
     T
     as() const {
       T result;
-      values::parse_value(m_value, result);
+      values::parse_value(value_, result);
       return result;
     }
 
   private:
-    const std::string m_key;
-    const std::string m_value;
+    const std::string key_;
+    const std::string value_;
   };
 
   using ParsedHashMap = std::unordered_map<size_t, OptionValue>;
@@ -718,8 +716,8 @@ static constexpr struct {
         const std::string arg_help = {});
 
     private:
-      const std::string m_group;
-      Options& m_options;
+      const std::string group_;
+      Options& options_;
     };
 
   public:
@@ -810,25 +808,25 @@ static constexpr struct {
     void
     generate_all_groups_help(String& result) const;
 
-    const std::string m_program;
-    const String m_help_string{};
-    std::string m_custom_help;
-    std::string m_positional_help;
-    size_t m_width;
-    bool m_show_positional;
-    bool m_allow_unrecognised;
-    bool m_tab_expansion;
+    const std::string program_;
+    const String help_string_{};
+    std::string custom_help_;
+    std::string positional_help_;
+    size_t width_;
+    bool show_positional_;
+    bool allow_unrecognised_;
+    bool tab_expansion_;
 
-    std::shared_ptr<OptionMap> m_options;
-    PositionalList m_positional;
-    std::unordered_set<std::string> m_positional_set;
+    std::shared_ptr<OptionMap> options_;
+    PositionalList positional_;
+    std::unordered_set<std::string> positional_set_;
 
     /// Mapping from groups to help options.
-    std::map<std::string, HelpGroupDetails> m_help;
+    std::map<std::string, HelpGroupDetails> help_;
 
-    std::list<OptionDetails> m_option_list;
-    std::unordered_map<std::string, decltype(m_option_list)::iterator>
-      m_option_map;
+    std::list<OptionDetails> option_list_;
+    std::unordered_map<std::string, decltype(option_list_)::iterator>
+      option_map_;
   };
 } // namespace cxxopts
 
