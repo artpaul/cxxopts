@@ -479,10 +479,10 @@ namespace values {
 namespace {
 
 template <typename T, bool B>
-struct SignedCheck;
+struct signed_check;
 
 template <typename T>
-struct SignedCheck<T, true> {
+struct signed_check<T, true> {
   template <typename U>
   void
   operator()(bool negative, U u, const std::string& text) {
@@ -499,7 +499,7 @@ struct SignedCheck<T, true> {
 };
 
 template <typename T>
-struct SignedCheck<T, false> {
+struct signed_check<T, false> {
   template <typename U>
   void
   operator()(bool, U, const std::string&) const noexcept {}
@@ -508,7 +508,7 @@ struct SignedCheck<T, false> {
 template <typename T, typename U>
 void
 check_signed_range(bool negative, U value, const std::string& text) {
-  SignedCheck<T, std::numeric_limits<T>::is_signed>()(negative, value, text);
+  signed_check<T, std::numeric_limits<T>::is_signed>()(negative, value, text);
 }
 
 template <typename R, typename T>
@@ -666,7 +666,7 @@ OptionDetails::OptionDetails(
     std::string short_name,
     std::string long_name,
     String desc,
-    std::shared_ptr<const Value> val
+    std::shared_ptr<const value_base> val
   )
   : short_(std::move(short_name))
   , long_(std::move(long_name))
@@ -692,13 +692,13 @@ OptionDetails::description() const {
 }
 
 CXXOPTS_NODISCARD
-const Value&
+const value_base&
 OptionDetails::value() const {
     return *value_;
 }
 
 CXXOPTS_NODISCARD
-std::shared_ptr<Value>
+std::shared_ptr<value_base>
 OptionDetails::make_storage() const {
   return value_->clone();
 }
@@ -862,7 +862,7 @@ ParseResult::unmatched() const {
 Option::Option(
     std::string opts,
     std::string desc,
-    std::shared_ptr<const Value> value,
+    std::shared_ptr<const value_base> value,
     std::string arg_help
   )
   : opts_(std::move(opts))
@@ -1252,7 +1252,7 @@ Options::add_option(
   const std::string& s,
   const std::string& l,
   std::string desc,
-  const std::shared_ptr<const Value>& value,
+  const std::shared_ptr<const value_base>& value,
   std::string arg_help)
 {
   auto string_desc = toLocalString(std::move(desc));
@@ -1444,7 +1444,7 @@ Options::OptionAdder&
 Options::OptionAdder::operator()(
   const std::string& opts,
   const std::string& desc,
-  const std::shared_ptr<const Value>& value,
+  const std::shared_ptr<const value_base>& value,
   std::string arg_help)
 {
   std::match_results<const char*> result;

@@ -185,17 +185,16 @@ void throw_or_mimic(const std::string& text) {
 
 #if defined(__GNUC__)
 // GNU GCC with -Weffc++ will issue a warning regarding the upcoming class, we want to silence it:
-// warning: base class 'class std::enable_shared_from_this<cxxopts::Value>' has accessible non-virtual destructor
+// warning: base class 'class std::enable_shared_from_this<cxxopts::value_base>' has accessible non-virtual destructor
 # pragma GCC diagnostic ignored "-Wnon-virtual-dtor"
 # pragma GCC diagnostic push
 // This will be ignored under other compilers like LLVM clang.
 #endif
-class Value : public std::enable_shared_from_this<Value> {
+class value_base : public std::enable_shared_from_this<value_base> {
 public:
-  virtual ~Value() = default;
+  virtual ~value_base() = default;
 
-  virtual
-  std::shared_ptr<Value>
+  virtual std::shared_ptr<value_base>
   clone() const = 0;
 
   virtual void
@@ -222,16 +221,16 @@ public:
   virtual std::string
   get_implicit_value() const = 0;
 
-  virtual std::shared_ptr<Value>
+  virtual std::shared_ptr<value_base>
   default_value(const std::string& value) = 0;
 
-  virtual std::shared_ptr<Value>
+  virtual std::shared_ptr<value_base>
   env(const std::string& var) = 0;
 
-  virtual std::shared_ptr<Value>
+  virtual std::shared_ptr<value_base>
   implicit_value(const std::string& value) = 0;
 
-  virtual std::shared_ptr<Value>
+  virtual std::shared_ptr<value_base>
   no_implicit_value() = 0;
 
   virtual bool
@@ -324,20 +323,22 @@ parse_value(const std::string& text, std::optional<T>& value) {
 #endif
 
 template <typename T>
-class abstract_value : public Value {
+class basic_value : public value_base {
 public:
-  abstract_value()
+  basic_value()
     : result_(std::make_shared<T>())
     , store_(result_.get())
   {
+    set_default_and_implicit();
   }
 
-  explicit abstract_value(T* t)
+  explicit basic_value(T* t)
     : store_(t)
   {
+    set_default_and_implicit();
   }
 
-  abstract_value(const abstract_value& rhs) {
+  basic_value(const basic_value& rhs) {
     if (rhs.result_) {
       result_ = std::make_shared<T>();
       store_ = result_.get();
@@ -351,7 +352,7 @@ public:
     implicit_value_ = rhs.implicit_value_;
   }
 
-  abstract_value& operator=(const abstract_value&) = default;
+  basic_value& operator=(const basic_value&) = default;
 
   void
   parse(const std::string& text) const override {
@@ -378,28 +379,28 @@ public:
     return implicit_;
   }
 
-  std::shared_ptr<Value>
+  std::shared_ptr<value_base>
   default_value(const std::string& value) override {
     default_ = true;
     default_value_ = value;
     return shared_from_this();
   }
 
-  std::shared_ptr<Value>
+  std::shared_ptr<value_base>
   env(const std::string& var) override {
     env_ = true;
     env_var_ = var;
     return shared_from_this();
   }
 
-  std::shared_ptr<Value>
+  std::shared_ptr<value_base>
   implicit_value(const std::string& value) override {
     implicit_ = true;
     implicit_value_ = value;
     return shared_from_this();
   }
 
-  std::shared_ptr<Value>
+  std::shared_ptr<value_base>
   no_implicit_value() override {
     implicit_ = false;
     return shared_from_this();
@@ -438,7 +439,22 @@ public:
     return detail::is_container_type<T>::value;
   }
 
-protected:
+  std::shared_ptr<value_base>
+  clone() const override {
+    return std::make_shared<basic_value<T>>(*this);
+  }
+
+private:
+  void
+  set_default_and_implicit() {
+    if (is_boolean()) {
+      default_ = true;
+      default_value_ = "false";
+      implicit_ = true;
+      implicit_value_ = "true";
+    }
+  }
+
   std::shared_ptr<T> result_;
   T* store_{};
 
@@ -451,58 +467,18 @@ protected:
   bool env_{false};
 };
 
-template <typename T>
-class standard_value : public abstract_value<T> {
-public:
-  using abstract_value<T>::abstract_value;
-
-  CXXOPTS_NODISCARD
-  std::shared_ptr<Value>
-  clone() const override {
-    return std::make_shared<standard_value<T>>(*this);
-  }
-};
-
-template <>
-class standard_value<bool> : public abstract_value<bool> {
-public:
-  standard_value() {
-    set_default_and_implicit();
-  }
-
-  explicit standard_value(bool* b)
-    : abstract_value(b)
-  {
-    set_default_and_implicit();
-  }
-
-  std::shared_ptr<Value>
-  clone() const override {
-    return std::make_shared<standard_value<bool>>(*this);
-  }
-
-private:
-  void
-  set_default_and_implicit() {
-    default_ = true;
-    default_value_ = "false";
-    implicit_ = true;
-    implicit_value_ = "true";
-  }
-};
-
 } // namespace values
 
 template <typename T>
-std::shared_ptr<Value>
+std::shared_ptr<value_base>
 value() {
-  return std::make_shared<values::standard_value<T>>();
+  return std::make_shared<values::basic_value<T>>();
 }
 
 template <typename T>
-std::shared_ptr<Value>
+std::shared_ptr<value_base>
 value(T& t) {
-  return std::make_shared<values::standard_value<T>>(&t);
+  return std::make_shared<values::basic_value<T>>(&t);
 }
 
 class OptionDetails {
@@ -511,7 +487,7 @@ public:
     std::string short_name,
     std::string long_name,
     String desc,
-    std::shared_ptr<const Value> val);
+    std::shared_ptr<const value_base> val);
 
   OptionDetails(const OptionDetails& rhs);
 
@@ -522,11 +498,11 @@ public:
   description() const;
 
   CXXOPTS_NODISCARD
-  const Value&
+  const value_base&
   value() const;
 
   CXXOPTS_NODISCARD
-  std::shared_ptr<Value>
+  std::shared_ptr<value_base>
   make_storage() const;
 
   CXXOPTS_NODISCARD
@@ -544,7 +520,7 @@ private:
   std::string short_;
   std::string long_;
   String desc_;
-  std::shared_ptr<const Value> value_;
+  std::shared_ptr<const value_base> value_;
   int count_;
   size_t hash_;
 };
@@ -602,9 +578,9 @@ public:
         long_name_ == nullptr ? "" : *long_name_);
     }
 #ifdef CXXOPTS_NO_RTTI
-    return static_cast<const values::standard_value<T>&>(*value_).get();
+    return static_cast<const values::basic_value<T>&>(*value_).get();
 #else
-    return dynamic_cast<const values::standard_value<T>&>(*value_).get();
+    return dynamic_cast<const values::basic_value<T>&>(*value_).get();
 #endif
   }
 
@@ -615,7 +591,7 @@ private:
   const std::string* long_name_{nullptr};
   // Holding this pointer is safe, since OptionValue's only exist
   // in key-value pairs, where the key has the string we point to.
-  std::shared_ptr<Value> value_;
+  std::shared_ptr<value_base> value_;
   size_t count_{0};
   bool default_{false};
 };
@@ -687,12 +663,12 @@ struct Option {
   Option(
     std::string opts,
     std::string desc,
-    std::shared_ptr<const Value> value = ::cxxopts::value<bool>(),
+    std::shared_ptr<const value_base> value = ::cxxopts::value<bool>(),
     std::string arg_help = "");
 
   std::string opts_;
   std::string desc_;
-  std::shared_ptr<const Value> value_;
+  std::shared_ptr<const value_base> value_;
   std::string arg_help_;
 };
 
@@ -709,7 +685,7 @@ public:
     operator() (
       const std::string& opts,
       const std::string& desc,
-      const std::shared_ptr<const Value>& value = ::cxxopts::value<bool>(),
+      const std::shared_ptr<const value_base>& value = ::cxxopts::value<bool>(),
       const std::string arg_help = {});
 
   private:
@@ -760,7 +736,7 @@ public:
     const std::string& s,
     const std::string& l,
     std::string desc,
-    const std::shared_ptr<const Value>& value,
+    const std::shared_ptr<const value_base>& value,
     std::string arg_help);
 
   //parse positional arguments into the given option
