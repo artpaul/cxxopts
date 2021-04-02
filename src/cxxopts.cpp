@@ -929,22 +929,18 @@ public:
   parse_no_value(const std::shared_ptr<OptionDetails>& details);
 
 private:
-  void finalise_aliases();
-
   const OptionMap& options_;
   const PositionalList& positional_;
+  const bool allow_unrecognised_{};
 
   std::vector<KeyValue> sequential_;
-  bool allow_unrecognised_{};
-
   ParsedHashMap parsed_;
-  NameHashMap keys_;
 };
 
 OptionParser::OptionParser(
     const OptionMap& options,
     const PositionalList& positional,
-    bool allow_unrecognised
+    const bool allow_unrecognised
   )
   : options_(options)
   , positional_(positional)
@@ -955,14 +951,12 @@ OptionParser::OptionParser(
 void
 OptionParser::parse_default(const std::shared_ptr<OptionDetails>& details) {
   // TODO: remove the duplicate code here
-  auto& store = parsed_[details->hash()];
-  store.parse_default(details);
+  parsed_[details->hash()].parse_default(details);
 }
 
 void
 OptionParser::parse_no_value(const std::shared_ptr<OptionDetails>& details) {
-  auto& store = parsed_[details->hash()];
-  store.parse_no_value(details);
+  parsed_[details->hash()].parse_no_value(details);
 }
 
 void
@@ -971,10 +965,7 @@ OptionParser::parse_option(
   const std::string& /*name*/,
   const std::string& arg)
 {
-  auto hash = value->hash();
-  auto& result = parsed_[hash];
-  result.parse(value, arg);
-
+  parsed_[value->hash()].parse(value, arg);
   sequential_.emplace_back(value->long_name(), arg);
 }
 
@@ -1016,118 +1007,118 @@ OptionParser::consume_positional(
   const std::string& a,
   PositionalListIterator& next)
 {
-  while (next != positional_.end()) {
-    auto iter = options_.find(*next);
-    if (iter != options_.end()) {
-      if (!iter->second->value().is_container()) {
-        auto& result = parsed_[iter->second->hash()];
-        if (result.count() == 0) {
-          add_to_option(iter, *next, a);
-          ++next;
-          return true;
-        }
-        ++next;
-        continue;
-      }
-      add_to_option(iter, *next, a);
+  for (; next != positional_.end(); ++next) {
+    const auto oi = options_.find(*next);
+    if (oi == options_.end()) {
+      throw_or_mimic<option_not_exists_exception>(*next);
+    }
+    if (oi->second->value().is_container()) {
+      add_to_option(oi, *next, a);
       return true;
     }
-    throw_or_mimic<option_not_exists_exception>(*next);
+    if (parsed_[oi->second->hash()].count() == 0) {
+      add_to_option(oi, *next, a);
+      ++next;
+      return true;
+    }
   }
-
   return false;
 }
 
 ParseResult
 OptionParser::parse(int argc, const char* const* argv) {
   int current = 1;
-  bool consume_remaining = false;
   auto next_positional = positional_.begin();
-
+  NameHashMap keys;
   std::vector<std::string> unmatched;
 
   while (current != argc) {
     if (strcmp(argv[current], "--") == 0) {
-      consume_remaining = true;
+      // Skip dash-dash argument.
       ++current;
+      // Try to consume all remaining arguments as positional.
+      for (; current < argc; ++current) {
+        if (!consume_positional(argv[current], next_positional)) {
+          break;
+        }
+      }
+      // Adjust argv for any that couldn't be swallowed.
+      for (; current != argc; ++current) {
+        unmatched.emplace_back(argv[current]);
+      }
       break;
     }
 
-    std::match_results<const char*> result;
+    std::cmatch result;
     std::regex_match(argv[current], result, option_matcher);
 
     if (result.empty()) {
       //not a flag
 
-      // but if it starts with a `-`, then it's an error
+      // But if it starts with a `-`, then it's an error.
       if (argv[current][0] == '-' && argv[current][1] != '\0') {
         if (!allow_unrecognised_) {
           throw_or_mimic<option_syntax_exception>(argv[current]);
         }
       }
 
-      //if true is returned here then it was consumed, otherwise it is
-      //ignored
-      if (consume_positional(argv[current], next_positional)) {
-        ;
-      } else {
+      // If true is returned here then it was consumed, otherwise it is
+      // ignored.
+      if (!consume_positional(argv[current], next_positional)) {
         unmatched.emplace_back(argv[current]);
       }
-      //if we return from here then it was parsed successfully, so continue
+      // If we return from here then it was parsed successfully, so continue.
     } else {
-      //short or long option?
+      // Short or long option?
       if (result[4].length() != 0) {
-        const std::string& s = result[4];
+        const std::string& seq = result[4];
+        // Iterate over the sequence of short options.
+        for (std::size_t i = 0; i != seq.size(); ++i) {
+          const std::string name(1, seq[i]);
+          const auto oi = options_.find(name);
 
-        for (std::size_t i = 0; i != s.size(); ++i) {
-          std::string name(1, s[i]);
-          auto iter = options_.find(name);
-
-          if (iter == options_.end()) {
+          if (oi == options_.end()) {
             if (allow_unrecognised_) {
               continue;
             }
-            //error
+            // Error.
             throw_or_mimic<option_not_exists_exception>(name);
           }
 
-          auto value = iter->second;
-
-          if (i + 1 == s.size()) {
-            //it must be the last argument
-            checked_parse_arg(argc, argv, current, value, name);
-          } else if (value->value().has_implicit()) {
-            parse_option(value, name, value->value().get_implicit_value());
+          const auto& opt = oi->second;
+          if (i + 1 == seq.size()) {
+            // It must be the last argument.
+            checked_parse_arg(argc, argv, current, opt, name);
+          } else if (opt->value().has_implicit()) {
+            parse_option(opt, name, opt->value().get_implicit_value());
           } else {
-            //error
+            // Error.
             throw_or_mimic<option_requires_argument_exception>(name);
           }
         }
       } else if (result[1].length() != 0) {
         const std::string& name = result[1];
+        const auto oi = options_.find(name);
 
-        auto iter = options_.find(name);
-
-        if (iter == options_.end()) {
+        if (oi == options_.end()) {
           if (allow_unrecognised_) {
-            // keep unrecognised options in argument list, skip to next argument
+            // Keep unrecognised options in argument list,
+            // skip to next argument.
             unmatched.emplace_back(argv[current]);
             ++current;
             continue;
           }
-          //error
+          // Error.
           throw_or_mimic<option_not_exists_exception>(name);
         }
 
-        auto opt = iter->second;
-
-        //equals provided for long option?
+        const auto& opt = oi->second;
+        // Equal sign provided for the long option?
         if (result[2].length() != 0) {
-          //parse the option given
-
+          // Parse the option given.
           parse_option(opt, name, result[3]);
         } else {
-          //parse the next argument
+          // Parse the next argument.
           checked_parse_arg(argc, argv, current, opt, name);
         }
       }
@@ -1157,40 +1148,21 @@ OptionParser::parse(int argc, const char* const* argv) {
     }
   }
 
-  if (consume_remaining) {
-    while (current < argc) {
-      if (!consume_positional(argv[current], next_positional)) {
-        break;
-      }
-      ++current;
-    }
-
-    //adjust argv for any that couldn't be swallowed
-    while (current != argc) {
-      unmatched.emplace_back(argv[current]);
-      ++current;
-    }
-  }
-
-  finalise_aliases();
-
-  return ParseResult(
-    std::move(keys_),
-    std::move(parsed_),
-    std::move(sequential_),
-    std::move(unmatched));
-}
-
-void
-OptionParser::finalise_aliases() {
+  // Finalize aliases.
   for (auto& option: options_) {
-    auto& detail = *option.second;
-    auto hash = detail.hash();
-    keys_[detail.short_name()] = hash;
-    keys_[detail.long_name()] = hash;
+    const auto& detail = *option.second;
+    const auto hash = detail.hash();
+    keys[detail.short_name()] = hash;
+    keys[detail.long_name()] = hash;
 
     parsed_.emplace(hash, OptionValue());
   }
+
+  return ParseResult(
+    std::move(keys),
+    std::move(parsed_),
+    std::move(sequential_),
+    std::move(unmatched));
 }
 
 } // namespace
@@ -1275,9 +1247,8 @@ Options::parse_positional(std::initializer_list<std::string> options) {
 
 ParseResult
 Options::parse(int argc, const char* const* argv) {
-  OptionParser parser(*options_, positional_, allow_unrecognised_);
-
-  return parser.parse(argc, argv);
+  return OptionParser(*options_, positional_, allow_unrecognised_)
+    .parse(argc, argv);
 }
 
 void

@@ -655,8 +655,10 @@ struct type_is_container<std::vector<T>> {
     const std::string value_;
   };
 
-  using ParsedHashMap = std::unordered_map<size_t, OptionValue>;
+  /// Maps option name to hash of the name.
   using NameHashMap = std::unordered_map<std::string, size_t>;
+  /// Maps hash of an option name to the option value.
+  using ParsedHashMap = std::unordered_map<size_t, OptionValue>;
 
   class ParseResult {
   public:
