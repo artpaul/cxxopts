@@ -788,21 +788,19 @@ OptionValue::ensure_value(const std::shared_ptr<const OptionDetails>& details) {
 }
 
 
-KeyValue::KeyValue(std::string key_, std::string value_)
-  : key_(std::move(key_))
-  , value_(std::move(value_))
+key_value::key_value(std::string key, std::string value)
+  : key_(std::move(key))
+  , value_(std::move(value))
 {
 }
 
 CXXOPTS_NODISCARD
-const std::string&
-KeyValue::key() const {
+const std::string& key_value::key() const {
   return key_;
 }
 
 CXXOPTS_NODISCARD
-const std::string&
-KeyValue::value() const {
+const std::string& key_value::value() const {
   return value_;
 }
 
@@ -810,7 +808,7 @@ KeyValue::value() const {
 ParseResult::ParseResult(
     NameHashMap&& keys,
     ParsedHashMap&& values,
-    std::vector<KeyValue> sequential,
+    std::vector<key_value> sequential,
     std::vector<std::string>&& unmatched_args
   )
   : keys_(std::move(keys))
@@ -850,7 +848,7 @@ ParseResult::operator[](const std::string& option) const {
   return vi->second;
 }
 
-const std::vector<KeyValue>&
+const std::vector<key_value>&
 ParseResult::arguments() const {
   return sequential_;
 }
@@ -923,7 +921,7 @@ private:
   const PositionalList& positional_;
   const bool allow_unrecognised_{};
 
-  std::vector<KeyValue> sequential_;
+  std::vector<key_value> sequential_;
   ParsedHashMap parsed_;
 };
 
@@ -1304,7 +1302,8 @@ Options::help_one_group(const std::string& g) const {
   String result;
 
   if (!g.empty()) {
-    result += toLocalString(g + "\n");
+    result += toLocalString(g);
+    result += '\n';
   }
 
   for (const auto& o : group->second.options) {
@@ -1315,10 +1314,10 @@ Options::help_one_group(const std::string& g) const {
     }
 
     auto s = format_option(o);
-    longest = (std::max)(longest, stringLength(s));
+    longest = std::max(longest, stringLength(s));
     format.push_back(std::make_pair(s, String()));
   }
-  longest = (std::min)(longest, OPTION_LONGEST);
+  longest = std::min(longest, OPTION_LONGEST);
 
   //widest allowed description -- min 10 chars for helptext/line
   size_t allowed = 10;
@@ -1377,32 +1376,26 @@ Options::generate_group_help(
 
 void
 Options::generate_all_groups_help(String& result) const {
-  std::vector<std::string> all_groups;
-
-  std::transform(
-    help_.begin(),
-    help_.end(),
-    std::back_inserter(all_groups),
-    [] (const std::map<std::string, HelpGroupDetails>::value_type& group) {
-      return group.first;
-    }
-  );
-
-  generate_group_help(result, all_groups);
+  generate_group_help(result, groups());
 }
 
 std::string
 Options::help(const std::vector<std::string>& help_groups) const {
-  std::string result;
+  String result;
 
   if (!help_string_.empty()) {
-    result += help_string_ + "\n";
+    result += help_string_;
+    result += '\n';
   }
-  result += "usage: " +
-    toLocalString(program_) + " " + toLocalString(custom_help_);
+
+  result += "usage: ";
+  result += toLocalString(program_);
+  result += " ";
+  result += toLocalString(custom_help_);
 
   if (!positional_.empty() && !positional_help_.empty()) {
-    result += " " + toLocalString(positional_help_);
+    result += " ";
+    result += toLocalString(positional_help_);
   }
 
   result += "\n\n";
@@ -1418,18 +1411,15 @@ Options::help(const std::vector<std::string>& help_groups) const {
 
 std::vector<std::string>
 Options::groups() const {
-  std::vector<std::string> g;
+  std::vector<std::string> names;
 
-  std::transform(
-    help_.begin(),
-    help_.end(),
-    std::back_inserter(g),
+  std::transform(help_.begin(), help_.end(), std::back_inserter(names),
     [] (const std::map<std::string, HelpGroupDetails>::value_type& pair) {
       return pair.first;
     }
   );
 
-  return g;
+  return names;
 }
 
 const HelpGroupDetails&
