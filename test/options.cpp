@@ -4,12 +4,13 @@
 #include <cstring>
 #include <initializer_list>
 
-class Argv {
-  public:
+namespace {
 
+class Argv {
+public:
   Argv(std::initializer_list<const char*> args)
-  : m_argv(new const char*[args.size()])
-  , m_argc(static_cast<int>(args.size()))
+    : argc_(static_cast<int>(args.size()))
+    , argv_(new const char*[args.size()])
   {
     int i = 0;
     auto iter = args.begin();
@@ -18,8 +19,8 @@ class Argv {
       auto ptr = std::unique_ptr<char[]>(new char[len]);
 
       strcpy(ptr.get(), *iter);
-      m_args.push_back(std::move(ptr));
-      m_argv.get()[i] = m_args.back().get();
+      args_.push_back(std::move(ptr));
+      argv_.get()[i] = args_.back().get();
 
       ++iter;
       ++i;
@@ -27,23 +28,36 @@ class Argv {
   }
 
   const char** argv() const {
-    return m_argv.get();
+    return argv_.get();
   }
 
   int argc() const {
-    return m_argc;
+    return argc_;
   }
 
-  private:
-
-  std::vector<std::unique_ptr<char[]>> m_args{};
-  std::unique_ptr<const char*[]> m_argv;
-  int m_argc;
+private:
+  const int argc_;
+  std::unique_ptr<const char*[]> argv_;
+  std::vector<std::unique_ptr<char[]>> args_;
 };
+
+} // namespace
+
+TEST_CASE("Value", "traits") {
+  CHECK(!cxxopts::value<int>()->is_boolean());
+  CHECK(!cxxopts::value<std::string>()->is_boolean());
+
+  CHECK(cxxopts::value<bool>()->is_boolean());
+
+  CHECK(!cxxopts::value<std::string>()->is_container());
+  CHECK(!cxxopts::value<bool>()->is_container());
+
+  CHECK(cxxopts::value<std::vector<int>>()->is_container());
+  CHECK(cxxopts::value<std::vector<std::string>>()->is_container());
+}
 
 TEST_CASE("Basic options", "[options]")
 {
-
   cxxopts::Options options("tester", " - test basic options");
 
   options.add_options()

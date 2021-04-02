@@ -81,6 +81,20 @@ static constexpr struct {
   using String = std::string;
 #endif
 
+namespace detail {
+
+template <typename T>
+struct type_is_container {
+  static constexpr bool value = false;
+};
+
+template <typename T>
+struct type_is_container<std::vector<T>> {
+  static constexpr bool value = true;
+};
+
+} // namespace detail
+
 #if defined(__GNUC__)
 // GNU GCC with -Weffc++ will issue a warning regarding the upcoming class, we want to silence it:
 // warning: base class 'class std::enable_shared_from_this<cxxopts::Value>' has accessible non-virtual destructor
@@ -111,9 +125,6 @@ static constexpr struct {
     virtual bool
     has_implicit() const = 0;
 
-    virtual bool
-    is_container() const = 0;
-
     virtual std::string
     get_default_value() const = 0;
 
@@ -137,6 +148,9 @@ static constexpr struct {
 
     virtual bool
     is_boolean() const = 0;
+
+    virtual bool
+    is_container() const = 0;
   };
 #if defined(__GNUC__)
 #pragma GCC diagnostic pop
@@ -319,16 +333,6 @@ static constexpr struct {
 #endif
 
     template <typename T>
-    struct type_is_container {
-      static constexpr bool value = false;
-    };
-
-    template <typename T>
-    struct type_is_container<std::vector<T>> {
-      static constexpr bool value = true;
-    };
-
-    template <typename T>
     class abstract_value : public Value {
       using Self = abstract_value<T>;
 
@@ -363,11 +367,6 @@ static constexpr struct {
       void
       parse(const std::string& text) const override {
         parse_value(text, *store_);
-      }
-
-      bool
-      is_container() const override {
-        return type_is_container<T>::value;
       }
 
       void
@@ -432,17 +431,22 @@ static constexpr struct {
         return implicit_value_;
       }
 
-      bool
-      is_boolean() const override {
-        return std::is_same<T, bool>::value;
-      }
-
       const T&
       get() const {
         if (store_ == nullptr) {
           return *result_;
         }
         return *store_;
+      }
+
+      bool
+      is_boolean() const override {
+        return std::is_same<T, bool>::value;
+      }
+
+      bool
+      is_container() const override {
+        return detail::type_is_container<T>::value;
       }
 
     protected:
