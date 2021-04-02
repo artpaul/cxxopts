@@ -108,7 +108,7 @@ TEST_CASE("Basic options", "[options]")
   CHECK(arguments[2].key() == "value");
   CHECK(arguments[3].key() == "av");
 
-  CHECK_THROWS_AS(result["nothing"].as<std::string>(), cxxopts::option_has_no_value_exception&);
+  CHECK_THROWS_AS(result["nothing"].as<std::string>(), cxxopts::option_has_no_value_error&);
 }
 
 TEST_CASE("Short options", "[options]")
@@ -242,7 +242,7 @@ TEST_CASE("Positional not valid", "[positional]") {
   auto** argv = av.argv();
   auto argc = av.argc();
 
-  CHECK_THROWS_AS(options.parse(argc, argv), cxxopts::option_not_exists_exception&);
+  CHECK_THROWS_AS(options.parse(argc, argv), cxxopts::option_not_exists_error&);
 }
 
 TEST_CASE("Positional with empty arguments", "[positional]") {
@@ -301,7 +301,7 @@ TEST_CASE("Boolean without implicit value", "[implicit]")
     auto** argv = av.argv();
     auto argc = av.argc();
 
-    CHECK_THROWS_AS(options.parse(argc, argv), cxxopts::missing_argument_exception&);
+    CHECK_THROWS_AS(options.parse(argc, argv), cxxopts::missing_argument_error&);
   }
 
   SECTION("With equal-separated true") {
@@ -676,7 +676,7 @@ TEST_CASE("Unrecognised options", "[options]") {
   auto argc = av.argc();
 
   SECTION("Default behaviour") {
-    CHECK_THROWS_AS(options.parse(argc, argv), cxxopts::option_not_exists_exception&);
+    CHECK_THROWS_AS(options.parse(argc, argv), cxxopts::option_not_exists_error&);
   }
 
   SECTION("After allowing unrecognised options") {
@@ -703,7 +703,7 @@ TEST_CASE("Allow bad short syntax", "[options]") {
   auto argc = av.argc();
 
   SECTION("Default behaviour") {
-    CHECK_THROWS_AS(options.parse(argc, argv), cxxopts::option_syntax_exception&);
+    CHECK_THROWS_AS(options.parse(argc, argv), cxxopts::option_syntax_error&);
   }
 
   SECTION("After allowing unrecognised options") {
@@ -711,6 +711,26 @@ TEST_CASE("Allow bad short syntax", "[options]") {
     CHECK_NOTHROW(options.parse(argc, argv));
     REQUIRE(argc == 2);
     CHECK_THAT(argv[1], Catch::Equals("-some_bad_short"));
+  }
+}
+
+TEST_CASE("Option not present", "[options]") {
+  cxxopts::Options options("not_present", " - test option not present");
+  options.add_options()
+    ("s", "a short option");
+
+  Argv av({
+    "not_present",
+    "-s",
+  });
+
+  auto** argv = av.argv();
+  auto argc = av.argc();
+
+  SECTION("Default behaviour") {
+    cxxopts::ParseResult result;
+    CHECK_NOTHROW((result = options.parse(argc, argv)));
+    CHECK_THROWS_AS(result["a"], cxxopts::option_not_present_error&);
   }
 }
 
@@ -726,7 +746,7 @@ TEST_CASE("Invalid option syntax", "[options]") {
   auto argc = av.argc();
 
   SECTION("Default behaviour") {
-    CHECK_THROWS_AS(options.parse(argc, argv), cxxopts::option_syntax_exception&);
+    CHECK_THROWS_AS(options.parse(argc, argv), cxxopts::option_syntax_error&);
   }
 }
 
@@ -745,7 +765,7 @@ TEST_CASE("Options empty", "[options]") {
   auto** argv = argv_.argv();
 
   CHECK(options.groups().empty());
-  CHECK_THROWS_AS(options.parse(argc, argv), cxxopts::option_not_exists_exception&);
+  CHECK_THROWS_AS(options.parse(argc, argv), cxxopts::option_not_exists_error&);
 }
 
 TEST_CASE("Initializer list with group", "[options]") {

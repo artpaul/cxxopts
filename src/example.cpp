@@ -157,7 +157,7 @@ parse(int argc, const char* argv[])
     auto arguments = result.arguments();
     std::cout << "Saw " << arguments.size() << " arguments" << std::endl;
   }
-  catch (const cxxopts::OptionException& e)
+  catch (const cxxopts::option_error& e)
   {
     std::cout << "error parsing options: " << e.what() << std::endl;
     exit(1);

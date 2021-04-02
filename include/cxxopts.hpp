@@ -95,6 +95,95 @@ struct type_is_container<std::vector<T>> {
 
 } // namespace detail
 
+
+class option_error : public std::runtime_error {
+public:
+  explicit option_error(const std::string& what_arg);
+};
+
+class parse_error : public option_error {
+public:
+  explicit parse_error(const std::string& what_arg);
+};
+
+class spec_error : public option_error {
+public:
+  explicit spec_error(const std::string& what_arg);
+};
+
+
+class option_exists_error : public spec_error {
+public:
+  explicit option_exists_error(const std::string& option);
+};
+
+class invalid_option_format_error : public spec_error {
+public:
+  explicit invalid_option_format_error(const std::string& format);
+};
+
+
+class option_syntax_error : public parse_error {
+public:
+  explicit option_syntax_error(const std::string& text);
+};
+
+class option_not_exists_error : public parse_error {
+public:
+  explicit option_not_exists_error(const std::string& option);
+};
+
+class missing_argument_error : public parse_error {
+public:
+  explicit missing_argument_error(const std::string& option);
+};
+
+class option_requires_argument_error : public parse_error {
+public:
+  explicit option_requires_argument_error(const std::string& option);
+};
+
+class option_not_has_argument_error : public parse_error {
+public:
+  option_not_has_argument_error (
+    const std::string& option,
+    const std::string& arg);
+};
+
+class option_not_present_error : public parse_error {
+public:
+  explicit option_not_present_error(const std::string& option);
+};
+
+class argument_incorrect_type : public parse_error {
+public:
+  explicit argument_incorrect_type (const std::string& arg);
+};
+
+class option_has_no_value_error : public option_error {
+public:
+  explicit option_has_no_value_error(const std::string& option);
+};
+
+template <typename T>
+CXXOPTS_NORETURN
+void throw_or_mimic(const std::string& text) {
+  static_assert(std::is_base_of<std::exception, T>::value,
+                "throw_or_mimic only works on std::exception and "
+                "deriving classes");
+
+#ifndef CXXOPTS_NO_EXCEPTIONS
+  // If CXXOPTS_NO_EXCEPTIONS is not defined, just throw
+  throw T{text};
+#else
+  // Otherwise manually instantiate the exception, print what() to stderr,
+  // and exit
+  T exception{text};
+  std::cerr << exception.what() << std::endl;
+  std::exit(EXIT_FAILURE);
+#endif
+}
+
 #if defined(__GNUC__)
 // GNU GCC with -Weffc++ will issue a warning regarding the upcoming class, we want to silence it:
 // warning: base class 'class std::enable_shared_from_this<cxxopts::Value>' has accessible non-virtual destructor
@@ -102,157 +191,59 @@ struct type_is_container<std::vector<T>> {
 #pragma GCC diagnostic push
 // This will be ignored under other compilers like LLVM clang.
 #endif
-  class Value : public std::enable_shared_from_this<Value> {
-  public:
-    virtual ~Value() = default;
+class Value : public std::enable_shared_from_this<Value> {
+public:
+  virtual ~Value() = default;
 
-    virtual
-    std::shared_ptr<Value>
-    clone() const = 0;
+  virtual
+  std::shared_ptr<Value>
+  clone() const = 0;
 
-    virtual void
-    parse(const std::string& text) const = 0;
+  virtual void
+  parse(const std::string& text) const = 0;
 
-    virtual void
-    parse() const = 0;
+  virtual void
+  parse() const = 0;
 
-    virtual bool
-    has_default() const = 0;
+  virtual bool
+  has_default() const = 0;
 
-    virtual bool
-    has_env() const = 0;
+  virtual bool
+  has_env() const = 0;
 
-    virtual bool
-    has_implicit() const = 0;
+  virtual bool
+  has_implicit() const = 0;
 
-    virtual std::string
-    get_default_value() const = 0;
+  virtual std::string
+  get_default_value() const = 0;
 
-    virtual std::string
-    get_env_var() const = 0;
+  virtual std::string
+  get_env_var() const = 0;
 
-    virtual std::string
-    get_implicit_value() const = 0;
+  virtual std::string
+  get_implicit_value() const = 0;
 
-    virtual std::shared_ptr<Value>
-    default_value(const std::string& value) = 0;
+  virtual std::shared_ptr<Value>
+  default_value(const std::string& value) = 0;
 
-    virtual std::shared_ptr<Value>
-    env(const std::string& var) = 0;
+  virtual std::shared_ptr<Value>
+  env(const std::string& var) = 0;
 
-    virtual std::shared_ptr<Value>
-    implicit_value(const std::string& value) = 0;
+  virtual std::shared_ptr<Value>
+  implicit_value(const std::string& value) = 0;
 
-    virtual std::shared_ptr<Value>
-    no_implicit_value() = 0;
+  virtual std::shared_ptr<Value>
+  no_implicit_value() = 0;
 
-    virtual bool
-    is_boolean() const = 0;
+  virtual bool
+  is_boolean() const = 0;
 
-    virtual bool
-    is_container() const = 0;
-  };
+  virtual bool
+  is_container() const = 0;
+};
 #if defined(__GNUC__)
 #pragma GCC diagnostic pop
 #endif
-
-  class OptionException : public std::exception {
-  public:
-    explicit OptionException(const std::string message);
-
-    CXXOPTS_NODISCARD
-    const char*
-    what() const noexcept override;
-
-  private:
-    const std::string message_;
-  };
-
-  class OptionSpecException : public OptionException {
-  public:
-    explicit OptionSpecException(const std::string message);
-  };
-
-  class OptionParseException : public OptionException {
-  public:
-    explicit OptionParseException(const std::string message);
-  };
-
-  class option_exists_error : public OptionSpecException {
-  public:
-    explicit option_exists_error(const std::string& option);
-  };
-
-  class invalid_option_format_error : public OptionSpecException {
-  public:
-    explicit invalid_option_format_error(const std::string& format);
-  };
-
-  class option_syntax_exception : public OptionParseException {
-  public:
-    explicit option_syntax_exception(const std::string& text);
-  };
-
-  class option_not_exists_exception : public OptionParseException {
-  public:
-    explicit option_not_exists_exception(const std::string& option);
-  };
-
-  class missing_argument_exception : public OptionParseException {
-  public:
-    explicit missing_argument_exception(const std::string& option);
-  };
-
-  class option_requires_argument_exception : public OptionParseException {
-  public:
-    explicit option_requires_argument_exception(const std::string& option);
-  };
-
-  class option_not_has_argument_exception : public OptionParseException {
-  public:
-    option_not_has_argument_exception (
-      const std::string& option,
-      const std::string& arg);
-  };
-
-  class option_not_present_exception : public OptionParseException {
-  public:
-    explicit option_not_present_exception(const std::string& option);
-  };
-
-  class option_has_no_value_exception : public OptionException {
-  public:
-    explicit option_has_no_value_exception(const std::string& option);
-  };
-
-  class argument_incorrect_type : public OptionParseException {
-  public:
-    explicit argument_incorrect_type (const std::string& arg);
-  };
-
-  class option_required_exception : public OptionParseException {
-  public:
-    explicit option_required_exception(const std::string& option);
-  };
-
-  template <typename T>
-  CXXOPTS_NORETURN
-  void throw_or_mimic(const std::string& text) {
-    static_assert(std::is_base_of<std::exception, T>::value,
-                  "throw_or_mimic only works on std::exception and "
-                  "deriving classes");
-
-#ifndef CXXOPTS_NO_EXCEPTIONS
-    // If CXXOPTS_NO_EXCEPTIONS is not defined, just throw
-    throw T{text};
-#else
-    // Otherwise manually instantiate the exception, print what() to stderr,
-    // and exit
-    T exception{text};
-    std::cerr << exception.what() << std::endl;
-    std::exit(EXIT_FAILURE);
-#endif
-  }
 
   namespace values {
     void
@@ -608,7 +599,7 @@ struct type_is_container<std::vector<T>> {
     const T&
     as() const {
       if (!has_value()) {
-        throw_or_mimic<option_has_no_value_exception>(
+        throw_or_mimic<option_has_no_value_error>(
           long_name_ == nullptr ? "" : *long_name_);
       }
 #ifdef CXXOPTS_NO_RTTI
