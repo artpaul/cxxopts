@@ -27,7 +27,6 @@ THE SOFTWARE.
 #define CXXOPTS_HPP_INCLUDED
 
 #include <exception>
-#include <list>
 #include <map>
 #include <memory>
 #include <sstream>
@@ -809,21 +808,19 @@ public:
     const String help_string_{};
     std::string custom_help_;
     std::string positional_help_;
-    size_t width_;
+    size_t width_{};
     bool show_positional_;
     bool allow_unrecognised_;
     bool tab_expansion_;
 
-    std::shared_ptr<OptionMap> options_;
+    // Named options.
+    OptionMap options_;
+    // List of named positional arguments.
     PositionalList positional_;
     std::unordered_set<std::string> positional_set_;
 
     /// Mapping from groups to help options.
     std::map<std::string, HelpGroupDetails> help_;
-
-    std::list<OptionDetails> option_list_;
-    std::unordered_map<std::string, decltype(option_list_)::iterator>
-      option_map_;
   };
 } // namespace cxxopts
 

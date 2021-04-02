@@ -1167,7 +1167,6 @@ Options::Options(std::string program, std::string help_string)
   , show_positional_(false)
   , allow_unrecognised_(false)
   , tab_expansion_(false)
-  , options_(std::make_shared<OptionMap>())
 {
 }
 
@@ -1237,7 +1236,7 @@ Options::parse_positional(std::initializer_list<std::string> options) {
 
 ParseResult
 Options::parse(int argc, const char* const* argv) {
-  return OptionParser(*options_, positional_, allow_unrecognised_)
+  return OptionParser(options_, positional_, allow_unrecognised_)
     .parse(argc, argv);
 }
 
@@ -1258,26 +1257,21 @@ Options::add_option(
   const std::shared_ptr<const Value>& value,
   std::string arg_help)
 {
-  auto stringDesc = toLocalString(std::move(desc));
-  auto option = std::make_shared<OptionDetails>(s, l, stringDesc, value);
+  auto string_desc = toLocalString(std::move(desc));
+  auto details = std::make_shared<OptionDetails>(s, l, string_desc, value);
 
   if (!s.empty()) {
-    add_one_option(s, option);
+    add_one_option(s, details);
   }
 
   if (!l.empty()) {
-    add_one_option(l, option);
+    add_one_option(l, details);
   }
 
-  option_list_.push_front(*option.get());
-  auto iter = option_list_.begin();
-  option_map_[s] = iter;
-  option_map_[l] = iter;
-
-  //add the help details
+  // Add the help details.
   auto& options = help_[group];
 
-  options.options.emplace_back(HelpOptionDetails{s, l, stringDesc,
+  options.options.emplace_back(HelpOptionDetails{s, l, string_desc,
       value->get_default_value(), value->get_implicit_value(),
       std::move(arg_help),
       value->has_implicit(), value->has_default(),
@@ -1289,7 +1283,7 @@ Options::add_one_option(
   const std::string& option,
   const std::shared_ptr<OptionDetails>& details)
 {
-  auto in = options_->emplace(option, details);
+  const auto in = options_.emplace(option, details);
 
   if (!in.second) {
     throw_or_mimic<option_exists_error>(option);
