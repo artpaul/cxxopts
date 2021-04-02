@@ -57,7 +57,7 @@ parse(int argc, const char* argv[])
         "without an option", cxxopts::value<std::vector<std::string>>())
       ("long-description",
         "thisisareallylongwordthattakesupthewholelineandcannotbebrokenataspace")
-      ("help", "Print help")
+      ("h,help", "Print help")
       ("tab-expansion", "Tab\texpansion")
       ("int", "An integer", cxxopts::value<int>(), "N")
       ("float", "A floating point number", cxxopts::value<float>())
@@ -79,7 +79,8 @@ parse(int argc, const char* argv[])
 
     if (result.count("help"))
     {
-      std::cout << options.help({"", "Group"}) << std::endl;
+      std::cout << options.help() << std::endl;
+      //std::cout << options.help({"", "Group"}) << std::endl;
       exit(0);
     }
 

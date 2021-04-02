@@ -270,7 +270,8 @@ static constexpr struct {
     void
     parse_value(const std::string& text, bool& value);
 
-    void parse_value(const std::string& text, char& c);
+    void
+    parse_value(const std::string& text, char& c);
 
     void
     parse_value(const std::string& text, std::string& value);
@@ -512,8 +513,6 @@ static constexpr struct {
     return std::make_shared<values::standard_value<T>>(&t);
   }
 
-  class OptionAdder;
-
   class OptionDetails {
   public:
     OptionDetails(
@@ -650,8 +649,8 @@ static constexpr struct {
     }
 
   private:
-    std::string m_key;
-    std::string m_value;
+    const std::string m_key;
+    const std::string m_value;
   };
 
   using ParsedHashMap = std::unordered_map<size_t, OptionValue>;
@@ -704,61 +703,25 @@ static constexpr struct {
 
   using OptionMap = std::unordered_map<std::string, std::shared_ptr<OptionDetails>>;
   using PositionalList = std::vector<std::string>;
-  using PositionalListIterator = PositionalList::const_iterator;
-
-  class OptionParser {
-  public:
-    OptionParser(
-      const OptionMap& options,
-      const PositionalList& positional,
-      bool allow_unrecognised);
-
-    ParseResult
-    parse(int argc, const char* const* argv);
-
-    bool
-    consume_positional(const std::string& a, PositionalListIterator& next);
-
-    void
-    checked_parse_arg(
-      int argc,
-      const char* const* argv,
-      int& current,
-      const std::shared_ptr<OptionDetails>& value,
-      const std::string& name);
-
-    void
-    add_to_option(
-      OptionMap::const_iterator iter,
-      const std::string& option,
-      const std::string& arg);
-
-    void
-    parse_option(
-      const std::shared_ptr<OptionDetails>& value,
-      const std::string& name,
-      const std::string& arg = {});
-
-    void
-    parse_default(const std::shared_ptr<OptionDetails>& details);
-
-    void
-    parse_no_value(const std::shared_ptr<OptionDetails>& details);
-
-  private:
-    void finalise_aliases();
-
-    const OptionMap& m_options;
-    const PositionalList& m_positional;
-
-    std::vector<KeyValue> m_sequential;
-    bool m_allow_unrecognised{};
-
-    ParsedHashMap m_parsed;
-    NameHashMap m_keys;
-  };
 
   class Options {
+  public:
+    class OptionAdder {
+    public:
+      OptionAdder(const std::string group, Options& options);
+
+      OptionAdder&
+      operator() (
+        const std::string& opts,
+        const std::string& desc,
+        const std::shared_ptr<const Value>& value = ::cxxopts::value<bool>(),
+        const std::string arg_help = {});
+
+    private:
+      const std::string m_group;
+      Options& m_options;
+    };
+
   public:
     explicit Options(std::string program, std::string help_string = {});
 
@@ -847,8 +810,8 @@ static constexpr struct {
     void
     generate_all_groups_help(String& result) const;
 
-    std::string m_program;
-    String m_help_string{};
+    const std::string m_program;
+    const String m_help_string{};
     std::string m_custom_help;
     std::string m_positional_help;
     size_t m_width;
@@ -857,7 +820,7 @@ static constexpr struct {
     bool m_tab_expansion;
 
     std::shared_ptr<OptionMap> m_options;
-    std::vector<std::string> m_positional;
+    PositionalList m_positional;
     std::unordered_set<std::string> m_positional_set;
 
     /// Mapping from groups to help options.
@@ -866,22 +829,6 @@ static constexpr struct {
     std::list<OptionDetails> m_option_list;
     std::unordered_map<std::string, decltype(m_option_list)::iterator>
       m_option_map;
-  };
-
-  class OptionAdder {
-  public:
-    OptionAdder(Options& options, std::string group);
-
-    OptionAdder&
-    operator() (
-      const std::string& opts,
-      const std::string& desc,
-      const std::shared_ptr<const Value>& value = ::cxxopts::value<bool>(),
-      std::string arg_help = {});
-
-  private:
-    Options& m_options;
-    std::string m_group;
   };
 } // namespace cxxopts
 
