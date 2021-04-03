@@ -192,52 +192,149 @@ void throw_or_mimic(const std::string& text) {
 #endif
 class value_base : public std::enable_shared_from_this<value_base> {
 public:
+  value_base() = default;
+
+  value_base(const value_base& rhs)
+    : default_value_(rhs.default_value_)
+    , env_var_(rhs.env_var_)
+    , implicit_value_(rhs.implicit_value_)
+    , default_(rhs.default_)
+    , env_(rhs.env_)
+    , implicit_(rhs.implicit_)
+  {
+  }
+
   virtual ~value_base() = default;
 
+  /** Returns whether the default value was set. */
+  bool
+  has_default() const {
+    return default_;
+  }
+
+  /** Returns whether the env variable was set. */
+  bool
+  has_env() const {
+    return env_;
+  }
+
+  /** Returns whether the implicit value was set. */
+  bool
+  has_implicit() const {
+    return implicit_;
+  }
+
+  /** Returns default value. */
+  std::string
+  get_default_value() const {
+    return default_value_;
+  }
+
+  /** Returns env variable. */
+  std::string
+  get_env_var() const {
+    return env_var_;
+  }
+
+  /** Returns implicit value. */
+  std::string
+  get_implicit_value() const {
+    return implicit_value_;
+  }
+
+  /** Sets default value. */
+  std::shared_ptr<value_base>
+  default_value(const std::string& value) {
+    default_ = true;
+    default_value_ = value;
+    return shared_from_this();
+  }
+
+  /** Sets env variable. */
+  std::shared_ptr<value_base>
+  env(const std::string& var) {
+    env_ = true;
+    env_var_ = var;
+    return shared_from_this();
+  }
+
+  /** Sets implicit value. */
+  std::shared_ptr<value_base>
+  implicit_value(const std::string& value) {
+    implicit_ = true;
+    implicit_value_ = value;
+    return shared_from_this();
+  }
+
+  /** Clears implicit value. */
+  std::shared_ptr<value_base>
+  no_implicit_value() {
+    implicit_ = false;
+    implicit_value_.clear();
+    return shared_from_this();
+  }
+
+  /** Returns whether the type of the value is boolean. */
+  bool
+  is_boolean() const {
+    return do_is_boolean();
+  }
+
+  /** Returns whether the type of the value is container. */
+  bool
+  is_container() const {
+    return do_is_container();
+  }
+
+  /** Clones the object. */
+  std::shared_ptr<value_base>
+  clone() const {
+    return do_clone();
+  }
+
+  /** Parses the given text into the value. */
+  void
+  parse(const std::string& text) const {
+    return do_parse(text);
+  }
+
+  /** Parses the default value. */
+  void
+  parse() const {
+    return do_parse(default_value_);
+  }
+
+protected:
   virtual std::shared_ptr<value_base>
-  clone() const = 0;
+  do_clone() const = 0;
+
+  virtual bool
+  do_is_boolean() const = 0;
+
+  virtual bool
+  do_is_container() const = 0;
 
   virtual void
-  parse(const std::string& text) const = 0;
+  do_parse(const std::string& text) const = 0;
 
-  virtual void
-  parse() const = 0;
+  void
+  set_default_and_implicit() {
+    if (is_boolean()) {
+      default_ = true;
+      default_value_ = "false";
+      implicit_ = true;
+      implicit_value_ = "true";
+    }
+  }
 
-  virtual bool
-  has_default() const = 0;
+private:
+  std::string default_value_;
+  std::string env_var_;
+  std::string implicit_value_;
 
-  virtual bool
-  has_env() const = 0;
-
-  virtual bool
-  has_implicit() const = 0;
-
-  virtual std::string
-  get_default_value() const = 0;
-
-  virtual std::string
-  get_env_var() const = 0;
-
-  virtual std::string
-  get_implicit_value() const = 0;
-
-  virtual std::shared_ptr<value_base>
-  default_value(const std::string& value) = 0;
-
-  virtual std::shared_ptr<value_base>
-  env(const std::string& var) = 0;
-
-  virtual std::shared_ptr<value_base>
-  implicit_value(const std::string& value) = 0;
-
-  virtual std::shared_ptr<value_base>
-  no_implicit_value() = 0;
-
-  virtual bool
-  is_boolean() const = 0;
-
-  virtual bool
-  is_container() const = 0;
+  bool default_{false};
+  bool env_{false};
+  bool implicit_{false};
 };
 #if defined(__GNUC__)
 # pragma GCC diagnostic pop
@@ -332,151 +429,64 @@ public:
     set_default_and_implicit();
   }
 
-  explicit basic_value(T* t)
+  explicit basic_value(T* const t)
     : store_(t)
   {
     set_default_and_implicit();
   }
 
-  basic_value(const basic_value& rhs) {
+  basic_value(const basic_value& rhs)
+    : value_base(rhs)
+  {
     if (rhs.result_) {
       result_ = std::make_shared<T>();
       store_ = result_.get();
     } else {
       store_ = rhs.store_;
     }
-
-    default_ = rhs.default_;
-    implicit_ = rhs.implicit_;
-    default_value_ = rhs.default_value_;
-    implicit_value_ = rhs.implicit_value_;
-  }
-
-  basic_value& operator=(const basic_value&) = default;
-
-  void
-  parse(const std::string& text) const override {
-    parse_value(text, *store_);
-  }
-
-  void
-  parse() const override {
-    parse_value(default_value_, *store_);
-  }
-
-  bool
-  has_default() const override {
-    return default_;
-  }
-
-  bool
-  has_env() const override {
-    return env_;
-  }
-
-  bool
-  has_implicit() const override {
-    return implicit_;
-  }
-
-  std::shared_ptr<value_base>
-  default_value(const std::string& value) override {
-    default_ = true;
-    default_value_ = value;
-    return shared_from_this();
-  }
-
-  std::shared_ptr<value_base>
-  env(const std::string& var) override {
-    env_ = true;
-    env_var_ = var;
-    return shared_from_this();
-  }
-
-  std::shared_ptr<value_base>
-  implicit_value(const std::string& value) override {
-    implicit_ = true;
-    implicit_value_ = value;
-    return shared_from_this();
-  }
-
-  std::shared_ptr<value_base>
-  no_implicit_value() override {
-    implicit_ = false;
-    return shared_from_this();
-  }
-
-  std::string
-  get_default_value() const override {
-    return default_value_;
-  }
-
-  std::string
-  get_env_var() const override {
-    return env_var_;
-  }
-
-  std::string
-  get_implicit_value() const override {
-    return implicit_value_;
   }
 
   const T&
   get() const {
-    if (store_ == nullptr) {
-      return *result_;
-    }
     return *store_;
   }
 
+protected:
+  std::shared_ptr<value_base>
+  do_clone() const override {
+    return std::make_shared<basic_value<T>>(*this);
+  }
+
   bool
-  is_boolean() const override {
+  do_is_boolean() const override {
     return std::is_same<T, bool>::value;
   }
 
   bool
-  is_container() const override {
+  do_is_container() const override {
     return detail::is_container_type<T>::value;
   }
 
-  std::shared_ptr<value_base>
-  clone() const override {
-    return std::make_shared<basic_value<T>>(*this);
+  void
+  do_parse(const std::string& text) const override {
+    parse_value(text, *store_);
   }
 
 private:
-  void
-  set_default_and_implicit() {
-    if (is_boolean()) {
-      default_ = true;
-      default_value_ = "false";
-      implicit_ = true;
-      implicit_value_ = "true";
-    }
-  }
-
   std::shared_ptr<T> result_;
   T* store_{};
-
-  std::string default_value_;
-  std::string env_var_;
-  std::string implicit_value_;
-
-  bool default_{false};
-  bool implicit_{false};
-  bool env_{false};
 };
 
 } // namespace values
 
 template <typename T>
-std::shared_ptr<value_base>
+std::shared_ptr<values::basic_value<T>>
 value() {
   return std::make_shared<values::basic_value<T>>();
 }
 
 template <typename T>
-std::shared_ptr<value_base>
+std::shared_ptr<values::basic_value<T>>
 value(T& t) {
   return std::make_shared<values::basic_value<T>>(&t);
 }
