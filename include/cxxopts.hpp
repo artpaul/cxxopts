@@ -491,17 +491,17 @@ value(T& t) {
   return std::make_shared<values::basic_value<T>>(&t);
 }
 
-class OptionDetails {
+class option_details {
 public:
-  OptionDetails(
+  option_details(
     std::string short_name,
     std::string long_name,
     String desc,
     std::shared_ptr<const value_base> val);
 
-  OptionDetails(const OptionDetails& rhs);
+  option_details(const option_details& rhs);
 
-  OptionDetails(OptionDetails&& rhs) = default;
+  option_details(option_details&& rhs) = default;
 
   CXXOPTS_NODISCARD
   const String&
@@ -535,38 +535,8 @@ private:
   size_t hash_;
 };
 
-struct HelpOptionDetails {
-  std::string s;
-  std::string l;
-  String desc;
-  std::string default_value;
-  std::string implicit_value;
-  std::string arg_help;
-  bool has_implicit;
-  bool has_default;
-  bool is_container;
-  bool is_boolean;
-};
-
-struct HelpGroupDetails {
-  std::string name;
-  std::string description;
-  std::vector<HelpOptionDetails> options;
-};
-
-class OptionValue {
+class option_value {
 public:
-  void
-  parse(
-    const std::shared_ptr<const OptionDetails>& details,
-    const std::string& text);
-
-  void
-  parse_default(const std::shared_ptr<const OptionDetails>& details);
-
-  void
-  parse_no_value(const std::shared_ptr<const OptionDetails>& details);
-
   CXXOPTS_NODISCARD
   size_t
   count() const noexcept;
@@ -594,65 +564,81 @@ public:
 #endif
   }
 
+public:
+  void
+  parse(
+    const std::shared_ptr<const option_details>& details,
+    const std::string& text);
+
+  void
+  parse_default(const std::shared_ptr<const option_details>& details);
+
+  void
+  parse_no_value(const std::shared_ptr<const option_details>& details);
+
 private:
   void
-  ensure_value(const std::shared_ptr<const OptionDetails>& details);
+  ensure_value(const std::shared_ptr<const option_details>& details);
 
   const std::string* long_name_{nullptr};
-  // Holding this pointer is safe, since OptionValue's only exist
+  // Holding this pointer is safe, since option_value's only exist
   // in key-value pairs, where the key has the string we point to.
   std::shared_ptr<value_base> value_;
   size_t count_{0};
   bool default_{false};
 };
 
-class key_value {
-public:
-  key_value(std::string key, std::string value);
-
-  CXXOPTS_NODISCARD
-  const std::string& key() const;
-
-  CXXOPTS_NODISCARD
-  const std::string& value() const;
-
-  /**
-   * Parses the value to a variable of the specific type.
-   */
-  template <typename T>
-  T as() const {
-    T result;
-    values::parse_value(value_, result);
-    return result;
-  }
-
-private:
-  const std::string key_;
-  const std::string value_;
-};
-
 /// Maps option name to hash of the name.
 using NameHashMap = std::unordered_map<std::string, size_t>;
 /// Maps hash of an option name to the option value.
-using ParsedHashMap = std::unordered_map<size_t, OptionValue>;
+using ParsedHashMap = std::unordered_map<size_t, option_value>;
 
-class ParseResult {
+class parse_result {
 public:
-  ParseResult() = default;
-  ParseResult(const ParseResult&) = default;
-  ParseResult(
+  class key_value {
+  public:
+    key_value(std::string key, std::string value);
+
+    CXXOPTS_NODISCARD
+    const std::string& key() const;
+
+    CXXOPTS_NODISCARD
+    const std::string& value() const;
+
+    /**
+    * Parses the value to a variable of the specific type.
+    */
+    template <typename T>
+    T as() const {
+      T result;
+      values::parse_value(value_, result);
+      return result;
+    }
+
+  private:
+    const std::string key_;
+    const std::string value_;
+  };
+
+public:
+  parse_result() = default;
+  parse_result(const parse_result&) = default;
+  parse_result(
       NameHashMap&& keys,
       ParsedHashMap&& values,
-      std::vector<key_value> sequential,
+      std::vector<key_value>&& sequential,
       std::vector<std::string>&& unmatched_args);
 
-  ParseResult& operator=(ParseResult&&) = default;
-  ParseResult& operator=(const ParseResult&) = default;
+  parse_result& operator=(parse_result&&) = default;
+  parse_result& operator=(const parse_result&) = default;
 
   size_t
   count(const std::string& o) const;
 
-  const OptionValue&
+  bool
+  has(const std::string& o) const;
+
+  const option_value&
   operator[](const std::string& option) const;
 
   const std::vector<key_value>&
@@ -666,15 +652,16 @@ private:
   NameHashMap keys_;
   ParsedHashMap values_;
   std::vector<key_value> sequential_;
+  /// List of arguments that did not match any defined option.
   std::vector<std::string> unmatched_;
 };
 
-struct Option {
-  Option(
+struct option {
+  option(
     std::string opts,
     std::string desc,
     std::shared_ptr<const value_base> value = ::cxxopts::value<bool>(),
-    std::string arg_help = "");
+    std::string arg_help = {});
 
   std::string opts_;
   std::string desc_;
@@ -682,7 +669,26 @@ struct Option {
   std::string arg_help_;
 };
 
-using OptionMap = std::unordered_map<std::string, std::shared_ptr<OptionDetails>>;
+struct HelpOptionDetails {
+  std::string s;
+  std::string l;
+  String desc;
+  std::string default_value;
+  std::string implicit_value;
+  std::string arg_help;
+  bool has_implicit;
+  bool has_default;
+  bool is_container;
+  bool is_boolean;
+};
+
+struct HelpGroupDetails {
+  std::string name;
+  std::string description;
+  std::vector<HelpOptionDetails> options;
+};
+
+using OptionMap = std::unordered_map<std::string, std::shared_ptr<option_details>>;
 using PositionalList = std::vector<std::string>;
 
 class Options {
@@ -724,7 +730,7 @@ public:
   Options&
   set_tab_expansion(bool expansion=true);
 
-  ParseResult
+  parse_result
   parse(int argc, const char* const* argv);
 
   OptionAdder
@@ -733,12 +739,12 @@ public:
   void
   add_options(
     const std::string& group,
-    std::initializer_list<Option> options);
+    std::initializer_list<option> options);
 
   void
   add_option(
     const std::string& group,
-    const Option& option);
+    const option& option);
 
   void
   add_option(
@@ -781,7 +787,7 @@ private:
   void
   add_one_option(
     const std::string& option,
-    const std::shared_ptr<OptionDetails>& details);
+    const std::shared_ptr<option_details>& details);
 
   String
   help_one_group(const std::string& group) const;

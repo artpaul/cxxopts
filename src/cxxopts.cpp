@@ -662,7 +662,7 @@ parse_value(const std::string& text, std::string& value) {
 } // namespace values
 
 
-OptionDetails::OptionDetails(
+option_details::option_details(
     std::string short_name,
     std::string long_name,
     String desc,
@@ -677,7 +677,7 @@ OptionDetails::OptionDetails(
   hash_ = std::hash<std::string>{}(long_ + short_);
 }
 
-OptionDetails::OptionDetails(const OptionDetails& rhs)
+option_details::option_details(const option_details& rhs)
   : desc_(rhs.desc_)
   , value_(rhs.value_->clone())
   , count_(rhs.count_)
@@ -685,45 +685,40 @@ OptionDetails::OptionDetails(const OptionDetails& rhs)
 {
 }
 
-CXXOPTS_NODISCARD
 const String&
-OptionDetails::description() const {
+option_details::description() const {
   return desc_;
 }
 
-CXXOPTS_NODISCARD
 const value_base&
-OptionDetails::value() const {
+option_details::value() const {
     return *value_;
 }
 
-CXXOPTS_NODISCARD
 std::shared_ptr<value_base>
-OptionDetails::make_storage() const {
+option_details::make_storage() const {
   return value_->clone();
 }
 
-CXXOPTS_NODISCARD
 const std::string&
-OptionDetails::short_name() const {
+option_details::short_name() const {
   return short_;
 }
 
-CXXOPTS_NODISCARD
 const std::string&
-OptionDetails::long_name() const {
+option_details::long_name() const {
   return long_;
 }
 
 size_t
-OptionDetails::hash() const noexcept {
+option_details::hash() const noexcept {
   return hash_;
 }
 
 
 void
-OptionValue::parse(
-  const std::shared_ptr<const OptionDetails>& details,
+option_value::parse(
+  const std::shared_ptr<const option_details>& details,
   const std::string& text)
 {
   ensure_value(details);
@@ -733,8 +728,8 @@ OptionValue::parse(
 }
 
 void
-OptionValue::parse_default(
-  const std::shared_ptr<const OptionDetails>& details)
+option_value::parse_default(
+  const std::shared_ptr<const option_details>& details)
 {
   ensure_value(details);
   default_ = true;
@@ -743,8 +738,8 @@ OptionValue::parse_default(
 }
 
 void
-OptionValue::parse_no_value(
-  const std::shared_ptr<const OptionDetails>& details)
+option_value::parse_no_value(
+  const std::shared_ptr<const option_details>& details)
 {
   long_name_ = &details->long_name();
 }
@@ -756,9 +751,8 @@ OptionValue::parse_no_value(
 #endif
 #endif
 
-CXXOPTS_NODISCARD
 size_t
-OptionValue::count() const noexcept {
+option_value::count() const noexcept {
   return count_;
 }
 
@@ -768,47 +762,45 @@ OptionValue::count() const noexcept {
 #endif
 #endif
 
-CXXOPTS_NODISCARD
 bool
-OptionValue::has_default() const noexcept {
+option_value::has_default() const noexcept {
   return default_;
 }
 
-CXXOPTS_NODISCARD
 bool
-OptionValue::has_value() const noexcept {
+option_value::has_value() const noexcept {
   return value_ != nullptr;
 }
 
 void
-OptionValue::ensure_value(const std::shared_ptr<const OptionDetails>& details) {
+option_value::ensure_value(const std::shared_ptr<const option_details>& details) {
   if (value_ == nullptr) {
     value_ = details->make_storage();
   }
 }
 
 
-key_value::key_value(std::string key, std::string value)
+parse_result::key_value::key_value(std::string key, std::string value)
   : key_(std::move(key))
   , value_(std::move(value))
 {
 }
 
-CXXOPTS_NODISCARD
-const std::string& key_value::key() const {
+const std::string&
+parse_result::key_value::key() const {
   return key_;
 }
 
-CXXOPTS_NODISCARD
-const std::string& key_value::value() const {
+const std::string&
+parse_result::key_value::value() const {
   return value_;
 }
 
 
-ParseResult::ParseResult(
+parse_result::parse_result(
     NameHashMap&& keys,
     ParsedHashMap&& values,
-    std::vector<key_value> sequential,
+    std::vector<key_value>&& sequential,
     std::vector<std::string>&& unmatched_args
   )
   : keys_(std::move(keys))
@@ -819,7 +811,7 @@ ParseResult::ParseResult(
 }
 
 size_t
-ParseResult::count(const std::string& o) const {
+parse_result::count(const std::string& o) const {
   const auto ki = keys_.find(o);
   if (ki == keys_.end()) {
     return 0;
@@ -833,8 +825,13 @@ ParseResult::count(const std::string& o) const {
   return vi->second.count();
 }
 
-const OptionValue&
-ParseResult::operator[](const std::string& option) const {
+bool
+parse_result::has(const std::string& o) const {
+  return count(o) != 0;
+}
+
+const option_value&
+parse_result::operator[](const std::string& option) const {
   const auto ki = keys_.find(option);
   if (ki == keys_.end()) {
     throw_or_mimic<option_not_present_error>(option);
@@ -848,18 +845,18 @@ ParseResult::operator[](const std::string& option) const {
   return vi->second;
 }
 
-const std::vector<key_value>&
-ParseResult::arguments() const {
+const std::vector<parse_result::key_value>&
+parse_result::arguments() const {
   return sequential_;
 }
 
 const std::vector<std::string>&
-ParseResult::unmatched() const {
+parse_result::unmatched() const {
   return unmatched_;
 }
 
 
-Option::Option(
+option::option(
     std::string opts,
     std::string desc,
     std::shared_ptr<const value_base> value,
@@ -884,7 +881,7 @@ public:
     const PositionalList& positional,
     bool allow_unrecognised);
 
-  ParseResult
+  parse_result
   parse(int argc, const char* const* argv);
 
   bool
@@ -895,7 +892,7 @@ public:
     int argc,
     const char* const* argv,
     int& current,
-    const std::shared_ptr<OptionDetails>& value,
+    const std::shared_ptr<option_details>& value,
     const std::string& name);
 
   void
@@ -906,22 +903,22 @@ public:
 
   void
   parse_option(
-    const std::shared_ptr<OptionDetails>& value,
+    const std::shared_ptr<option_details>& value,
     const std::string& name,
     const std::string& arg = {});
 
   void
-  parse_default(const std::shared_ptr<OptionDetails>& details);
+  parse_default(const std::shared_ptr<option_details>& details);
 
   void
-  parse_no_value(const std::shared_ptr<OptionDetails>& details);
+  parse_no_value(const std::shared_ptr<option_details>& details);
 
 private:
   const OptionMap& options_;
   const PositionalList& positional_;
   const bool allow_unrecognised_{};
 
-  std::vector<key_value> sequential_;
+  std::vector<parse_result::key_value> sequential_;
   ParsedHashMap parsed_;
 };
 
@@ -937,19 +934,19 @@ OptionParser::OptionParser(
 }
 
 void
-OptionParser::parse_default(const std::shared_ptr<OptionDetails>& details) {
+OptionParser::parse_default(const std::shared_ptr<option_details>& details) {
   // TODO: remove the duplicate code here
   parsed_[details->hash()].parse_default(details);
 }
 
 void
-OptionParser::parse_no_value(const std::shared_ptr<OptionDetails>& details) {
+OptionParser::parse_no_value(const std::shared_ptr<option_details>& details) {
   parsed_[details->hash()].parse_no_value(details);
 }
 
 void
 OptionParser::parse_option(
-  const std::shared_ptr<OptionDetails>& value,
+  const std::shared_ptr<option_details>& value,
   const std::string& /*name*/,
   const std::string& arg)
 {
@@ -962,7 +959,7 @@ OptionParser::checked_parse_arg(
   int argc,
   const char* const* argv,
   int& current,
-  const std::shared_ptr<OptionDetails>& value,
+  const std::shared_ptr<option_details>& value,
   const std::string& name)
 {
   if (current + 1 >= argc) {
@@ -1013,7 +1010,7 @@ OptionParser::consume_positional(
   return false;
 }
 
-ParseResult
+parse_result
 OptionParser::parse(int argc, const char* const* argv) {
   int current = 1;
   auto next_positional = positional_.begin();
@@ -1143,10 +1140,10 @@ OptionParser::parse(int argc, const char* const* argv) {
     keys[detail.short_name()] = hash;
     keys[detail.long_name()] = hash;
 
-    parsed_.emplace(hash, OptionValue());
+    parsed_.emplace(hash, option_value());
   }
 
-  return ParseResult(
+  return parse_result(
     std::move(keys),
     std::move(parsed_),
     std::move(sequential_),
@@ -1207,11 +1204,11 @@ Options::set_tab_expansion(bool expansion) {
 void
 Options::add_options(
   const std::string& group,
-  std::initializer_list<Option> options)
+  std::initializer_list<option> options)
 {
   OptionAdder option_adder(group, *this);
-  for (const auto& option: options) {
-    option_adder(option.opts_, option.desc_, option.value_, option.arg_help_);
+  for (const auto& opt: options) {
+    option_adder(opt.opts_, opt.desc_, opt.value_, opt.arg_help_);
   }
 }
 
@@ -1232,18 +1229,15 @@ Options::parse_positional(std::initializer_list<std::string> options) {
   parse_positional(std::vector<std::string>(std::move(options)));
 }
 
-ParseResult
+parse_result
 Options::parse(int argc, const char* const* argv) {
   return OptionParser(options_, positional_, allow_unrecognised_)
     .parse(argc, argv);
 }
 
 void
-Options::add_option(
-  const std::string& group,
-  const Option& option)
-{
-    add_options(group, {option});
+Options::add_option(const std::string& group, const option& opt) {
+    add_options(group, {opt});
 }
 
 void
@@ -1256,7 +1250,7 @@ Options::add_option(
   std::string arg_help)
 {
   auto string_desc = toLocalString(std::move(desc));
-  auto details = std::make_shared<OptionDetails>(s, l, string_desc, value);
+  auto details = std::make_shared<option_details>(s, l, string_desc, value);
 
   if (!s.empty()) {
     add_one_option(s, details);
@@ -1279,7 +1273,7 @@ Options::add_option(
 void
 Options::add_one_option(
   const std::string& option,
-  const std::shared_ptr<OptionDetails>& details)
+  const std::shared_ptr<option_details>& details)
 {
   const auto in = options_.emplace(option, details);
 

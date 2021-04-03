@@ -728,7 +728,7 @@ TEST_CASE("Option not present", "[options]") {
   auto argc = av.argc();
 
   SECTION("Default behaviour") {
-    cxxopts::ParseResult result;
+    cxxopts::parse_result result;
     CHECK_NOTHROW((result = options.parse(argc, argv)));
     CHECK_THROWS_AS(result["a"], cxxopts::option_not_present_error&);
   }
@@ -776,7 +776,7 @@ TEST_CASE("Initializer list with group", "[options]") {
     {"p, port",  "server port",  cxxopts::value<std::string>()->default_value("7110"), "PORT"},
   });
 
-  cxxopts::Option help{"h,help", "Help"};
+  cxxopts::option help{"h,help", "Help"};
 
   options.add_options("TEST_GROUP", {
     {"t, test", "test option"},
@@ -808,7 +808,7 @@ TEST_CASE("Initializer list with group", "[options]") {
 TEST_CASE("Option add with add_option(string, Option)", "[options]") {
   cxxopts::Options options("Option add with add_option", " - test Option add with add_option(string, Option)");
 
-  cxxopts::Option option_1("t,test", "test option", cxxopts::value<int>()->default_value("7"), "TEST");
+  cxxopts::option option_1("t,test", "test option", cxxopts::value<int>()->default_value("7"), "TEST");
 
   options.add_option("", option_1);
   options.add_option("TEST", {"a,aggregate", "test option 2", cxxopts::value<int>(), "AGGREGATE"});
