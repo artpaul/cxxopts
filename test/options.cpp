@@ -133,6 +133,26 @@ TEST_CASE("Short options", "[options]")
     cxxopts::invalid_option_format_error&);
 }
 
+TEST_CASE("Short options without space", "[options]")
+{
+  cxxopts::options options("test_short", " - test short options without space");
+
+  options.add_options()
+    ("x", "a short option")
+    ("a", "a short option", cxxopts::value<std::string>());
+
+  Argv argv({"test_short", "-xxavalue"});
+
+  auto actual_argv = argv.argv();
+  auto argc = argv.argc();
+
+  auto result = options.parse(argc, actual_argv);
+
+  CHECK(result.count("x") == 2);
+  CHECK(result.count("a") == 1);
+  CHECK(result["a"].as<std::string>() == "value");
+}
+
 TEST_CASE("No positional", "[positional]")
 {
   cxxopts::options options("test_no_positional",

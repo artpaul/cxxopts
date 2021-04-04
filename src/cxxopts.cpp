@@ -795,8 +795,8 @@ public:
             } else if (opt->value()->has_implicit()) {
               parse_option(opt, name, opt->value()->get_implicit_value());
             } else {
-              // Error.
-              throw_or_mimic<option_requires_argument_error>(name);
+              parse_option(opt, name, seq.substr(i + 1));
+              break;
             }
           }
         } else if (result[1].length() != 0) {
@@ -900,25 +900,19 @@ private:
 
   void
   checked_parse_arg(
-    int argc,
+    const int argc,
     const char* const* argv,
     int& current,
     const std::shared_ptr<option_details>& value,
     const std::string& name)
   {
-    if (current + 1 >= argc) {
-      if (value->value()->has_implicit()) {
-        parse_option(value, name, value->value()->get_implicit_value());
-      } else {
-        throw_or_mimic<missing_argument_error>(name);
-      }
+    if (value->value()->has_implicit()) {
+      parse_option(value, name, value->value()->get_implicit_value());
+    } else if (current < argc - 1) {
+      parse_option(value, name, argv[current + 1]);
+      ++current;
     } else {
-      if (value->value()->has_implicit()) {
-        parse_option(value, name, value->value()->get_implicit_value());
-      } else {
-        parse_option(value, name, argv[current + 1]);
-        ++current;
-      }
+      throw_or_mimic<missing_argument_error>(name);
     }
   }
 
@@ -926,7 +920,7 @@ private:
   parse_option(
     const std::shared_ptr<option_details>& value,
     const std::string&,
-    const std::string& arg = {})
+    const std::string& arg)
   {
     parsed_[value->hash()].parse(value, arg);
     sequential_.emplace_back(value->long_name(), arg);
@@ -934,7 +928,6 @@ private:
 
   void
   parse_default(const std::shared_ptr<option_details>& details) {
-    // TODO: remove the duplicate code here
     parsed_[details->hash()].parse_default(details);
   }
 
