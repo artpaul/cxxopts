@@ -52,7 +52,7 @@ THE SOFTWARE.
 # define CXXOPTS_NODISCARD
 #endif
 
-#if __cplusplus >= 201103L
+#if __cplusplus >= 200809L
 # define CXXOPTS_NORETURN [[noreturn]]
 #else
 # define CXXOPTS_NORETURN
@@ -191,16 +191,6 @@ class value_base : public std::enable_shared_from_this<value_base> {
 public:
   value_base() = default;
 
-  value_base(const value_base& rhs)
-    : default_value_(rhs.default_value_)
-    , env_var_(rhs.env_var_)
-    , implicit_value_(rhs.implicit_value_)
-    , default_(rhs.default_)
-    , env_(rhs.env_)
-    , implicit_(rhs.implicit_)
-  {
-  }
-
   virtual ~value_base() = default;
 
   /** Returns whether the default value was set. */
@@ -283,12 +273,6 @@ public:
     return do_is_container();
   }
 
-  /** Clones the object. */
-  std::shared_ptr<value_base>
-  clone() const {
-    return do_clone();
-  }
-
   /** Parses the given text into the value. */
   void
   parse(const std::string& text) const {
@@ -302,9 +286,6 @@ public:
   }
 
 protected:
-  virtual std::shared_ptr<value_base>
-  do_clone() const = 0;
-
   virtual bool
   do_is_boolean() const = 0;
 
@@ -323,6 +304,9 @@ protected:
       implicit_value_ = "true";
     }
   }
+
+private:
+  value_base(const value_base& rhs) = delete;
 
 private:
   std::string default_value_;
@@ -436,28 +420,12 @@ public:
     set_default_and_implicit();
   }
 
-  basic_value(const basic_value& rhs)
-    : value_base(rhs)
-  {
-    if (rhs.result_) {
-      result_.reset(new T{});
-      store_ = result_.get();
-    } else {
-      store_ = rhs.store_;
-    }
-  }
-
   const T&
   get() const {
     return *store_;
   }
 
 protected:
-  std::shared_ptr<value_base>
-  do_clone() const override {
-    return std::make_shared<basic_value<T>>(*this);
-  }
-
   bool
   do_is_boolean() const override {
     return std::is_same<T, bool>::value;
@@ -504,19 +472,15 @@ public:
     std::string short_name,
     std::string long_name,
     cxx_string desc,
-    std::shared_ptr<const detail::value_base> val);
+    std::shared_ptr<detail::value_base> val);
 
   CXXOPTS_NODISCARD
   const cxx_string&
   description() const;
 
   CXXOPTS_NODISCARD
-  const detail::value_base&
-  value() const;
-
-  CXXOPTS_NODISCARD
   std::shared_ptr<detail::value_base>
-  make_storage() const;
+  value() const;
 
   CXXOPTS_NODISCARD
   const std::string&
@@ -537,7 +501,7 @@ private:
   /// Description of the option.
   const cxx_string desc_;
   const size_t hash_;
-  std::shared_ptr<const detail::value_base> value_;
+  const std::shared_ptr<detail::value_base> value_;
 };
 
 /**
@@ -573,8 +537,7 @@ public:
   const T&
   as() const {
     if (!has_value()) {
-      throw_or_mimic<option_has_no_value_error>(
-        long_name_ == nullptr ? std::string() : *long_name_);
+      throw_or_mimic<option_has_no_value_error>(long_name_);
     }
 #ifdef CXXOPTS_NO_RTTI
     return static_cast<const detail::basic_value<T>&>(*value_).get();
@@ -589,23 +552,23 @@ public:
    */
   void
   parse(
-    const std::shared_ptr<const option_details>& details,
+    const std::shared_ptr<option_details>& details,
     const std::string& text);
 
   /**
    * Parses option value from the default value.
    */
   void
-  parse_default(const std::shared_ptr<const option_details>& details);
+  parse_default(const std::shared_ptr<option_details>& details);
 
   void
-  parse_no_value(const std::shared_ptr<const option_details>& details);
+  parse_no_value(const std::shared_ptr<option_details>& details);
 
 private:
   void
-  ensure_value(const std::shared_ptr<const option_details>& details);
+  ensure_value(const std::shared_ptr<option_details>& details);
 
-  const std::string* long_name_{nullptr};
+  std::string long_name_;
   // Holding this pointer is safe, since option_value's only exist
   // in key-value pairs, where the key has the string we point to.
   std::shared_ptr<detail::value_base> value_;
@@ -699,7 +662,7 @@ public:
   option(
     std::string opts,
     std::string desc,
-    std::shared_ptr<const detail::value_base> value = ::cxxopts::value<bool>(),
+    std::shared_ptr<detail::value_base> value = ::cxxopts::value<bool>(),
     std::string arg_help = {});
 
 private:
@@ -709,7 +672,7 @@ private:
   const std::string opts_;
   /// Description of the option.
   const std::string desc_;
-  const std::shared_ptr<const detail::value_base> value_;
+  const std::shared_ptr<detail::value_base> value_;
   const std::string arg_help_;
 };
 
@@ -745,7 +708,7 @@ public:
     operator() (
       const std::string& opts,
       const std::string& desc,
-      const std::shared_ptr<const detail::value_base>& value
+      const std::shared_ptr<detail::value_base>& value
         = ::cxxopts::value<bool>(),
       const std::string arg_help = {});
 
@@ -838,7 +801,7 @@ private:
     const std::string& s,
     const std::string& l,
     std::string desc,
-    const std::shared_ptr<const detail::value_base>& value,
+    const std::shared_ptr<detail::value_base>& value,
     std::string arg_help);
 
   void

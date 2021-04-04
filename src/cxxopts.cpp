@@ -524,7 +524,7 @@ option_details::option_details(
     std::string short_name,
     std::string long_name,
     cxx_string desc,
-    std::shared_ptr<const detail::value_base> val
+    std::shared_ptr<detail::value_base> val
   )
   : short_(std::move(short_name))
   , long_(std::move(long_name))
@@ -539,14 +539,9 @@ option_details::description() const {
   return desc_;
 }
 
-const detail::value_base&
-option_details::value() const {
-    return *value_;
-}
-
 std::shared_ptr<detail::value_base>
-option_details::make_storage() const {
-  return value_->clone();
+option_details::value() const {
+    return value_;
 }
 
 const std::string&
@@ -567,30 +562,30 @@ option_details::hash() const noexcept {
 
 void
 option_value::parse(
-  const std::shared_ptr<const option_details>& details,
+  const std::shared_ptr<option_details>& details,
   const std::string& text)
 {
   ensure_value(details);
   ++count_;
   value_->parse(text);
-  long_name_ = &details->long_name();
+  long_name_ = details->long_name();
 }
 
 void
 option_value::parse_default(
-  const std::shared_ptr<const option_details>& details)
+  const std::shared_ptr<option_details>& details)
 {
   ensure_value(details);
   default_ = true;
-  long_name_ = &details->long_name();
+  long_name_ = details->long_name();
   value_->parse();
 }
 
 void
 option_value::parse_no_value(
-  const std::shared_ptr<const option_details>& details)
+  const std::shared_ptr<option_details>& details)
 {
-  long_name_ = &details->long_name();
+  long_name_ = details->long_name();
 }
 
 #if defined(__GNUC__)
@@ -622,9 +617,9 @@ option_value::has_value() const noexcept {
 }
 
 void
-option_value::ensure_value(const std::shared_ptr<const option_details>& details) {
+option_value::ensure_value(const std::shared_ptr<option_details>& details) {
   if (value_ == nullptr) {
-    value_ = details->make_storage();
+    value_ = details->value();
   }
 }
 
@@ -708,7 +703,7 @@ parse_result::unmatched() const {
 option::option(
     std::string opts,
     std::string desc,
-    std::shared_ptr<const detail::value_base> value,
+    std::shared_ptr<detail::value_base> value,
     std::string arg_help
   )
   : opts_(std::move(opts))
@@ -797,8 +792,8 @@ public:
             if (i + 1 == seq.size()) {
               // It must be the last argument.
               checked_parse_arg(argc, argv, current, opt, name);
-            } else if (opt->value().has_implicit()) {
-              parse_option(opt, name, opt->value().get_implicit_value());
+            } else if (opt->value()->has_implicit()) {
+              parse_option(opt, name, opt->value()->get_implicit_value());
             } else {
               // Error.
               throw_or_mimic<option_requires_argument_error>(name);
@@ -841,7 +836,7 @@ public:
 
       auto& store = parsed_[detail->hash()];
 
-      if (value.has_default()) {
+      if (value->has_default()) {
         if (!store.count() && !store.has_default()) {
           parse_default(detail);
         }
@@ -849,8 +844,8 @@ public:
         parse_no_value(detail);
       }
 
-      if (value.has_env() && !store.count()){
-        if (const char* env = std::getenv(value.get_env_var().c_str())) {
+      if (value->has_env() && !store.count()){
+        if (const char* env = std::getenv(value->get_env_var().c_str())) {
           store.parse(detail, std::string(env));
         }
       }
@@ -890,7 +885,7 @@ private:
       if (oi == options_.end()) {
         throw_or_mimic<option_not_exists_error>(*next);
       }
-      if (oi->second->value().is_container()) {
+      if (oi->second->value()->is_container()) {
         add_to_option(oi, *next, a);
         return true;
       }
@@ -912,14 +907,14 @@ private:
     const std::string& name)
   {
     if (current + 1 >= argc) {
-      if (value->value().has_implicit()) {
-        parse_option(value, name, value->value().get_implicit_value());
+      if (value->value()->has_implicit()) {
+        parse_option(value, name, value->value()->get_implicit_value());
       } else {
         throw_or_mimic<missing_argument_error>(name);
       }
     } else {
-      if (value->value().has_implicit()) {
-        parse_option(value, name, value->value().get_implicit_value());
+      if (value->value()->has_implicit()) {
+        parse_option(value, name, value->value()->get_implicit_value());
       } else {
         parse_option(value, name, argv[current + 1]);
         ++current;
@@ -1041,7 +1036,7 @@ options::add_option(
   const std::string& s,
   const std::string& l,
   std::string desc,
-  const std::shared_ptr<const detail::value_base>& value,
+  const std::shared_ptr<detail::value_base>& value,
   std::string arg_help)
 {
   auto string_desc = to_local_string(std::move(desc));
@@ -1372,7 +1367,7 @@ options::option_adder&
 options::option_adder::operator()(
   const std::string& opts,
   const std::string& desc,
-  const std::shared_ptr<const detail::value_base>& value,
+  const std::shared_ptr<detail::value_base>& value,
   std::string arg_help)
 {
   std::match_results<const char*> result;
