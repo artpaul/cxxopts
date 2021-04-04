@@ -27,10 +27,12 @@ THE SOFTWARE.
 #define CXXOPTS_HPP_INCLUDED
 
 #include <exception>
+#include <iterator>
 #include <map>
 #include <memory>
 #include <sstream>
 #include <string>
+#include <type_traits>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
@@ -479,12 +481,18 @@ private:
 
 } // namespace values
 
+/**
+ * Creates value holder for the specific type.
+ */
 template <typename T>
 std::shared_ptr<values::basic_value<T>>
 value() {
   return std::make_shared<values::basic_value<T>>();
 }
 
+/**
+ * Creates value holder for the specific type.
+ */
 template <typename T>
 std::shared_ptr<values::basic_value<T>>
 value(T& t) {
@@ -606,13 +614,16 @@ private:
   bool default_{false};
 };
 
-/// Maps option name to hash of the name.
-using name_hash_map = std::unordered_map<std::string, size_t>;
-/// Maps hash of an option name to the option value.
-using parsed_hash_map = std::unordered_map<size_t, option_value>;
-
+/**
+ * Provides the result of parsing of the command line arguments.
+ */
 class parse_result {
 public:
+  /// Maps option name to hash of the name.
+  using name_hash_map = std::unordered_map<std::string, size_t>;
+  /// Maps hash of an option name to the option value.
+  using parsed_hash_map = std::unordered_map<size_t, option_value>;
+
   class key_value {
   public:
     key_value(std::string key, std::string value);
@@ -641,28 +652,38 @@ public:
 public:
   parse_result() = default;
   parse_result(const parse_result&) = default;
+  parse_result(parse_result&&) = default;
   parse_result(
       name_hash_map&& keys,
       parsed_hash_map&& values,
       std::vector<key_value>&& sequential,
       std::vector<std::string>&& unmatched_args);
 
-  parse_result& operator=(parse_result&&) = default;
   parse_result& operator=(const parse_result&) = default;
+  parse_result& operator=(parse_result&&) = default;
 
+  /**
+   * Returns a number of occurrences of the option in
+   * the command line arguments.
+   */
   size_t
-  count(const std::string& o) const;
+  count(const std::string& name) const;
 
   bool
-  has(const std::string& o) const;
+  has(const std::string& name) const;
 
   const option_value&
-  operator[](const std::string& option) const;
+  operator[](const std::string& name) const;
 
+  /**
+   * Returns list of recognized options with non empty value.
+   */
   const std::vector<key_value>&
   arguments() const;
 
-  /** Returns list of unmatched arguments. */
+  /**
+   * Returns list of unmatched arguments.
+   */
   const std::vector<std::string>&
   unmatched() const;
 
@@ -706,9 +727,9 @@ struct help_group_details {
   std::vector<help_option_details> options;
 };
 
-using option_map = std::unordered_map<std::string, std::shared_ptr<option_details>>;
-using positional_list = std::vector<std::string>;
-
+/**
+ * Specification of command line options.
+ */
 class options {
 public:
   class option_adder {
@@ -748,46 +769,42 @@ public:
   options&
   set_tab_expansion(bool expansion=true);
 
-  parse_result
-  parse(int argc, const char* const* argv);
-
   option_adder
   add_options(std::string group = {});
 
+  /**
+   * Adds list of options to the specific group.
+   */
   void
   add_options(
     const std::string& group,
     std::initializer_list<option> options);
 
+  /**
+   * Adds an option to the specific group.
+   */
   void
   add_option(
     const std::string& group,
     const option& option);
 
+  template <typename ... Args>
   void
-  add_option(
-    const std::string& group,
-    const std::string& s,
-    const std::string& l,
-    std::string desc,
-    const std::shared_ptr<const value_base>& value,
-    std::string arg_help);
+  parse_positional(Args&& ... args) {
+    parse_positional(std::vector<std::string>{std::forward<Args>(args)...});
+  }
 
-  //parse positional arguments into the given option
+  template <
+    typename I,
+    typename std::enable_if<
+      !std::is_same<typename std::iterator_traits<I>::value_type, void>::value>>
   void
-  parse_positional(std::string option);
+  parse_positional(const I begin, const I end) {
+    parse_positional(std::vector<std::string>(begin, end));
+  }
 
   void
   parse_positional(std::vector<std::string> options);
-
-  void
-  parse_positional(std::initializer_list<std::string> options);
-
-  template <typename Iterator>
-  void
-  parse_positional(Iterator begin, Iterator end) {
-    parse_positional(std::vector<std::string>{begin, end});
-  }
 
   std::string
   help(const std::vector<std::string>& groups = {}) const;
@@ -801,7 +818,23 @@ public:
   const help_group_details&
   group_help(const std::string& group) const;
 
+public:
+  /**
+   * Parses the command line arguments according to the current specification.
+   */
+  parse_result
+  parse(int argc, const char* const* argv) const;
+
 private:
+  void
+  add_option(
+    const std::string& group,
+    const std::string& s,
+    const std::string& l,
+    std::string desc,
+    const std::shared_ptr<const value_base>& value,
+    std::string arg_help);
+
   void
   add_one_option(
     const std::string& option,
@@ -818,6 +851,13 @@ private:
   void
   generate_all_groups_help(cxx_string& result) const;
 
+private:
+  class option_parser;
+
+  using option_map =
+    std::unordered_map<std::string, std::shared_ptr<option_details>>;
+  using positional_list = std::vector<std::string>;
+
   const std::string program_;
   const cxx_string help_string_{};
   std::string custom_help_;
@@ -827,12 +867,13 @@ private:
   bool allow_unrecognised_;
   bool tab_expansion_;
 
-  // Named options.
+  /// Named options.
+  /// Short and long names exist as separate entries but
+  /// point to the same options object.
   option_map options_;
-  // List of named positional arguments.
+  /// List of named positional arguments.
   positional_list positional_;
   std::unordered_set<std::string> positional_set_;
-
   /// Mapping from groups to help options.
   std::map<std::string, help_group_details> help_;
 };

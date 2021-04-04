@@ -79,8 +79,7 @@ parse(int argc, const char* argv[])
 
     if (result.count("help"))
     {
-      std::cout << options.help() << std::endl;
-      //std::cout << options.help({"", "Group"}) << std::endl;
+      std::cout << options.help({"", "Group"}) << std::endl;
       exit(0);
     }
 

@@ -3,6 +3,7 @@
 
 #include <cstring>
 #include <initializer_list>
+#include <list>
 
 namespace {
 
@@ -162,8 +163,7 @@ TEST_CASE("All positional", "[positional]")
   auto argc = av.argc();
   auto argv = av.argv();
 
-  std::vector<std::string> pos_names = {"positional"};
-
+  std::list<std::string> pos_names = {"positional"};
   options.parse_positional(pos_names.begin(), pos_names.end());
 
   auto result = options.parse(argc, argv);
@@ -243,6 +243,25 @@ TEST_CASE("Positional not valid", "[positional]") {
   auto argc = av.argc();
 
   CHECK_THROWS_AS(options.parse(argc, argv), cxxopts::option_not_exists_error&);
+}
+
+TEST_CASE("Positional varargs", "[positional]") {
+  cxxopts::options options("positional_varargs", "positional varargs");
+  options.add_options()
+      ("a", "a", cxxopts::value<std::string>())
+      ("b", "b", cxxopts::value<std::string>())
+      ("c", "c", cxxopts::value<std::vector<std::string>>());
+  options.parse_positional("a", "b", "c");
+
+  Argv av({"foobar", "1", "2", "3", "4"});
+
+  auto** argv = av.argv();
+  auto argc = av.argc();
+
+  auto result = options.parse(argc, argv);
+  REQUIRE(result.count("a") == 1);
+  REQUIRE(result.count("b") == 1);
+  REQUIRE(result.count("c") == 2);
 }
 
 TEST_CASE("Positional with empty arguments", "[positional]") {
