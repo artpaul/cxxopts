@@ -457,12 +457,12 @@ option_not_present_error::option_not_present_error(
 
 
 option_has_no_value_error::option_has_no_value_error(
-    const std::string& option
+    const std::string& name
   )
   : option_error(
-      option.empty()
+      name.empty()
         ? "Option has no value"
-        : "Option " + LQUOTE + option + RQUOTE + " has no value"
+        : "Option " + LQUOTE + name + RQUOTE + " has no value"
     )
 {
 }
@@ -671,17 +671,8 @@ option_details::option_details(
   : short_(std::move(short_name))
   , long_(std::move(long_name))
   , desc_(std::move(desc))
+  , hash_(std::hash<std::string>{}(long_ + short_))
   , value_(std::move(val))
-  , count_(0)
-{
-  hash_ = std::hash<std::string>{}(long_ + short_);
-}
-
-option_details::option_details(const option_details& rhs)
-  : desc_(rhs.desc_)
-  , value_(rhs.value_->clone())
-  , count_(rhs.count_)
-  , hash_(0)
 {
 }
 

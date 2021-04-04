@@ -159,7 +159,7 @@ public:
 
 class option_has_no_value_error : public option_error {
 public:
-  explicit option_has_no_value_error(const std::string& option);
+  explicit option_has_no_value_error(const std::string& name);
 };
 
 template <typename T>
@@ -423,7 +423,7 @@ template <typename T>
 class basic_value : public value_base {
 public:
   basic_value()
-    : result_(std::make_shared<T>())
+    : result_(new T{})
     , store_(result_.get())
   {
     set_default_and_implicit();
@@ -439,7 +439,7 @@ public:
     : value_base(rhs)
   {
     if (rhs.result_) {
-      result_ = std::make_shared<T>();
+      result_.reset(new T{});
       store_ = result_.get();
     } else {
       store_ = rhs.store_;
@@ -473,7 +473,7 @@ protected:
   }
 
 private:
-  std::shared_ptr<T> result_;
+  std::unique_ptr<T> result_;
   T* store_{};
 };
 
@@ -499,10 +499,6 @@ public:
     String desc,
     std::shared_ptr<const value_base> val);
 
-  option_details(const option_details& rhs);
-
-  option_details(option_details&& rhs) = default;
-
   CXXOPTS_NODISCARD
   const String&
   description() const;
@@ -527,16 +523,25 @@ public:
   hash() const noexcept;
 
 private:
-  std::string short_;
-  std::string long_;
-  String desc_;
+  /// Short name of the option.
+  const std::string short_;
+  /// Long name of the option.
+  const std::string long_;
+  /// Description of the option.
+  const String desc_;
+  const size_t hash_;
   std::shared_ptr<const value_base> value_;
-  int count_;
-  size_t hash_;
 };
 
+/**
+ * Parsed value of an option.
+ */
 class option_value {
 public:
+  /**
+   * A number of occurrences of the option value in
+   * the command line arguments.
+   */
   CXXOPTS_NODISCARD
   size_t
   count() const noexcept;
@@ -546,16 +551,23 @@ public:
   bool
   has_default() const noexcept;
 
+  /**
+   * Returns true if there was a value for the option in the
+   * command line arguments.
+   */
   CXXOPTS_NODISCARD
   bool
   has_value() const noexcept;
 
+  /**
+   * Casts option value to the specific type.
+   */
   template <typename T>
   const T&
   as() const {
     if (!has_value()) {
       throw_or_mimic<option_has_no_value_error>(
-        long_name_ == nullptr ? "" : *long_name_);
+        long_name_ == nullptr ? std::string() : *long_name_);
     }
 #ifdef CXXOPTS_NO_RTTI
     return static_cast<const values::basic_value<T>&>(*value_).get();
@@ -565,11 +577,17 @@ public:
   }
 
 public:
+  /**
+   * Parses option value from the given text.
+   */
   void
   parse(
     const std::shared_ptr<const option_details>& details,
     const std::string& text);
 
+  /**
+   * Parses option value from the default value.
+   */
   void
   parse_default(const std::shared_ptr<const option_details>& details);
 
