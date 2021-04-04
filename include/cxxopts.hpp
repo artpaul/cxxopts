@@ -75,9 +75,9 @@ static constexpr struct {
 };
 
 #ifdef CXXOPTS_USE_UNICODE
-  using String = icu::UnicodeString;
+  using cxx_string = icu::UnicodeString;
 #else
-  using String = std::string;
+  using cxx_string = std::string;
 #endif
 
 namespace detail {
@@ -496,11 +496,11 @@ public:
   option_details(
     std::string short_name,
     std::string long_name,
-    String desc,
+    cxx_string desc,
     std::shared_ptr<const value_base> val);
 
   CXXOPTS_NODISCARD
-  const String&
+  const cxx_string&
   description() const;
 
   CXXOPTS_NODISCARD
@@ -528,7 +528,7 @@ private:
   /// Long name of the option.
   const std::string long_;
   /// Description of the option.
-  const String desc_;
+  const cxx_string desc_;
   const size_t hash_;
   std::shared_ptr<const value_base> value_;
 };
@@ -607,9 +607,9 @@ private:
 };
 
 /// Maps option name to hash of the name.
-using NameHashMap = std::unordered_map<std::string, size_t>;
+using name_hash_map = std::unordered_map<std::string, size_t>;
 /// Maps hash of an option name to the option value.
-using ParsedHashMap = std::unordered_map<size_t, option_value>;
+using parsed_hash_map = std::unordered_map<size_t, option_value>;
 
 class parse_result {
 public:
@@ -642,8 +642,8 @@ public:
   parse_result() = default;
   parse_result(const parse_result&) = default;
   parse_result(
-      NameHashMap&& keys,
-      ParsedHashMap&& values,
+      name_hash_map&& keys,
+      parsed_hash_map&& values,
       std::vector<key_value>&& sequential,
       std::vector<std::string>&& unmatched_args);
 
@@ -667,8 +667,8 @@ public:
   unmatched() const;
 
 private:
-  NameHashMap keys_;
-  ParsedHashMap values_;
+  name_hash_map keys_;
+  parsed_hash_map values_;
   std::vector<key_value> sequential_;
   /// List of arguments that did not match any defined option.
   std::vector<std::string> unmatched_;
@@ -687,10 +687,10 @@ struct option {
   std::string arg_help_;
 };
 
-struct HelpOptionDetails {
+struct help_option_details {
   std::string s;
   std::string l;
-  String desc;
+  cxx_string desc;
   std::string default_value;
   std::string implicit_value;
   std::string arg_help;
@@ -700,22 +700,22 @@ struct HelpOptionDetails {
   bool is_boolean;
 };
 
-struct HelpGroupDetails {
+struct help_group_details {
   std::string name;
   std::string description;
-  std::vector<HelpOptionDetails> options;
+  std::vector<help_option_details> options;
 };
 
-using OptionMap = std::unordered_map<std::string, std::shared_ptr<option_details>>;
-using PositionalList = std::vector<std::string>;
+using option_map = std::unordered_map<std::string, std::shared_ptr<option_details>>;
+using positional_list = std::vector<std::string>;
 
-class Options {
+class options {
 public:
-  class OptionAdder {
+  class option_adder {
   public:
-    OptionAdder(const std::string group, Options& options);
+    option_adder(const std::string group, options& options);
 
-    OptionAdder&
+    option_adder&
     operator() (
       const std::string& opts,
       const std::string& desc,
@@ -724,34 +724,34 @@ public:
 
   private:
     const std::string group_;
-    Options& options_;
+    options& options_;
   };
 
 public:
-  explicit Options(std::string program, std::string help_string = {});
+  explicit options(std::string program, std::string help_string = {});
 
-  Options&
+  options&
   positional_help(std::string help_text);
 
-  Options&
+  options&
   custom_help(std::string help_text);
 
-  Options&
+  options&
   show_positional_help();
 
-  Options&
+  options&
   allow_unrecognised_options();
 
-  Options&
+  options&
   set_width(size_t width);
 
-  Options&
+  options&
   set_tab_expansion(bool expansion=true);
 
   parse_result
   parse(int argc, const char* const* argv);
 
-  OptionAdder
+  option_adder
   add_options(std::string group = {});
 
   void
@@ -798,7 +798,7 @@ public:
   std::vector<std::string>
   groups() const;
 
-  const HelpGroupDetails&
+  const help_group_details&
   group_help(const std::string& group) const;
 
 private:
@@ -807,19 +807,19 @@ private:
     const std::string& option,
     const std::shared_ptr<option_details>& details);
 
-  String
+  cxx_string
   help_one_group(const std::string& group) const;
 
   void
   generate_group_help(
-    String& result,
+    cxx_string& result,
     const std::vector<std::string>& groups) const;
 
   void
-  generate_all_groups_help(String& result) const;
+  generate_all_groups_help(cxx_string& result) const;
 
   const std::string program_;
-  const String help_string_{};
+  const cxx_string help_string_{};
   std::string custom_help_;
   std::string positional_help_;
   size_t width_{};
@@ -828,13 +828,13 @@ private:
   bool tab_expansion_;
 
   // Named options.
-  OptionMap options_;
+  option_map options_;
   // List of named positional arguments.
-  PositionalList positional_;
+  positional_list positional_;
   std::unordered_set<std::string> positional_set_;
 
   /// Mapping from groups to help options.
-  std::map<std::string, HelpGroupDetails> help_;
+  std::map<std::string, help_group_details> help_;
 };
 
 } // namespace cxxopts

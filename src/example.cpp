@@ -31,7 +31,7 @@ parse(int argc, const char* argv[])
 {
   try
   {
-    cxxopts::Options options(argv[0], " - example command line options");
+    cxxopts::options options(argv[0], " - example command line options");
     options
       .positional_help("[optional args]")
       .show_positional_help();

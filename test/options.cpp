@@ -58,7 +58,7 @@ TEST_CASE("Value", "traits") {
 
 TEST_CASE("Basic options", "[options]")
 {
-  cxxopts::Options options("tester", " - test basic options");
+  cxxopts::options options("tester", " - test basic options");
 
   options.add_options()
     ("long", "a long option")
@@ -113,7 +113,7 @@ TEST_CASE("Basic options", "[options]")
 
 TEST_CASE("Short options", "[options]")
 {
-  cxxopts::Options options("test_short", " - test short options");
+  cxxopts::options options("test_short", " - test short options");
 
   options.add_options()
     ("a", "a short option", cxxopts::value<std::string>());
@@ -134,7 +134,7 @@ TEST_CASE("Short options", "[options]")
 
 TEST_CASE("No positional", "[positional]")
 {
-  cxxopts::Options options("test_no_positional",
+  cxxopts::options options("test_no_positional",
     " - test no positional options");
 
   Argv av({"tester", "a", "b", "def"});
@@ -151,7 +151,7 @@ TEST_CASE("All positional", "[positional]")
 {
   std::vector<std::string> positional;
 
-  cxxopts::Options options("test_all_positional", " - test all positional");
+  cxxopts::options options("test_all_positional", " - test all positional");
   options.add_options()
     ("positional", "Positional parameters",
       cxxopts::value<std::vector<std::string>>(positional))
@@ -178,7 +178,7 @@ TEST_CASE("All positional", "[positional]")
 
 TEST_CASE("Some positional explicit", "[positional]")
 {
-  cxxopts::Options options("positional_explicit", " - test positional");
+  cxxopts::options options("positional_explicit", " - test positional");
 
   options.add_options()
     ("input", "Input file", cxxopts::value<std::string>())
@@ -210,7 +210,7 @@ TEST_CASE("Some positional explicit", "[positional]")
 
 TEST_CASE("No positional with extras", "[positional]")
 {
-  cxxopts::Options options("posargmaster", "shows incorrect handling");
+  cxxopts::options options("posargmaster", "shows incorrect handling");
   options.add_options()
       ("dummy", "oh no", cxxopts::value<std::string>())
       ;
@@ -230,7 +230,7 @@ TEST_CASE("No positional with extras", "[positional]")
 }
 
 TEST_CASE("Positional not valid", "[positional]") {
-  cxxopts::Options options("positional_invalid", "invalid positional argument");
+  cxxopts::options options("positional_invalid", "invalid positional argument");
   options.add_options()
       ("long", "a long option", cxxopts::value<std::string>())
       ;
@@ -246,7 +246,7 @@ TEST_CASE("Positional not valid", "[positional]") {
 }
 
 TEST_CASE("Positional with empty arguments", "[positional]") {
-  cxxopts::Options options("positional_with_empty_arguments", "positional with empty argument");
+  cxxopts::options options("positional_with_empty_arguments", "positional with empty argument");
   options.add_options()
       ("long", "a long option", cxxopts::value<std::string>())
       ("program", "program to run", cxxopts::value<std::string>())
@@ -272,7 +272,7 @@ TEST_CASE("Positional with empty arguments", "[positional]") {
 
 TEST_CASE("Empty with implicit value", "[implicit]")
 {
-  cxxopts::Options options("empty_implicit", "doesn't handle empty");
+  cxxopts::options options("empty_implicit", "doesn't handle empty");
   options.add_options()
     ("implicit", "Has implicit", cxxopts::value<std::string>()
       ->implicit_value("foo"));
@@ -290,7 +290,7 @@ TEST_CASE("Empty with implicit value", "[implicit]")
 
 TEST_CASE("Boolean without implicit value", "[implicit]")
 {
-  cxxopts::Options options("no_implicit", "bool without an implicit value");
+  cxxopts::options options("no_implicit", "bool without an implicit value");
   options.add_options()
     ("bool", "Boolean without implicit", cxxopts::value<bool>()
       ->no_implicit_value());
@@ -351,7 +351,7 @@ TEST_CASE("Boolean without implicit value", "[implicit]")
 
 TEST_CASE("Default values", "[default]")
 {
-  cxxopts::Options options("defaults", "has defaults");
+  cxxopts::options options("defaults", "has defaults");
   options.add_options()
     ("default", "Has implicit", cxxopts::value<int>()->default_value("42"))
     ("v,vector", "Default vector", cxxopts::value<std::vector<int>>()
@@ -390,7 +390,7 @@ TEST_CASE("Parse into a reference", "[reference]")
 {
   int value = 0;
 
-  cxxopts::Options options("into_reference", "parses into a reference");
+  cxxopts::options options("into_reference", "parses into a reference");
   options.add_options()
     ("ref", "A reference", cxxopts::value(value));
 
@@ -406,7 +406,7 @@ TEST_CASE("Parse into a reference", "[reference]")
 
 TEST_CASE("Integers", "[options]")
 {
-  cxxopts::Options options("parses_integers", "parses integers correctly");
+  cxxopts::options options("parses_integers", "parses integers correctly");
   options.add_options()
     ("positional", "Integers", cxxopts::value<std::vector<int>>());
 
@@ -433,7 +433,7 @@ TEST_CASE("Integers", "[options]")
 
 TEST_CASE("Leading zero integers", "[options]")
 {
-  cxxopts::Options options("parses_integers", "parses integers correctly");
+  cxxopts::options options("parses_integers", "parses integers correctly");
   options.add_options()
     ("positional", "Integers", cxxopts::value<std::vector<int>>());
 
@@ -457,7 +457,7 @@ TEST_CASE("Leading zero integers", "[options]")
 
 TEST_CASE("Unsigned integers", "[options]")
 {
-  cxxopts::Options options("parses_unsigned", "detects unsigned errors");
+  cxxopts::options options("parses_unsigned", "detects unsigned errors");
   options.add_options()
     ("positional", "Integers", cxxopts::value<std::vector<unsigned int>>());
 
@@ -472,7 +472,7 @@ TEST_CASE("Unsigned integers", "[options]")
 
 TEST_CASE("Integer bounds", "[integer]")
 {
-  cxxopts::Options options("integer_boundaries", "check min/max integer");
+  cxxopts::options options("integer_boundaries", "check min/max integer");
   options.add_options()
     ("positional", "Integers", cxxopts::value<std::vector<int8_t>>());
 
@@ -516,7 +516,7 @@ TEST_CASE("Integer overflow", "[options]")
 {
   using namespace cxxopts::values;
 
-  cxxopts::Options options("reject_overflow", "rejects overflowing integers");
+  cxxopts::options options("reject_overflow", "rejects overflowing integers");
   options.add_options()
     ("positional", "Integers", cxxopts::value<std::vector<int8_t>>());
 
@@ -535,7 +535,7 @@ TEST_CASE("Integer overflow", "[options]")
 
 TEST_CASE("Floats", "[options]")
 {
-  cxxopts::Options options("parses_floats", "parses floats correctly");
+  cxxopts::options options("parses_floats", "parses floats correctly");
   options.add_options()
     ("double", "Double precision", cxxopts::value<double>())
     ("positional", "Floats", cxxopts::value<std::vector<float>>());
@@ -561,7 +561,7 @@ TEST_CASE("Floats", "[options]")
 }
 
 TEST_CASE("Invalid integers", "[integer]") {
-    cxxopts::Options options("invalid_integers", "rejects invalid integers");
+    cxxopts::options options("invalid_integers", "rejects invalid integers");
     options.add_options()
     ("positional", "Integers", cxxopts::value<std::vector<int>>());
 
@@ -575,7 +575,7 @@ TEST_CASE("Invalid integers", "[integer]") {
 }
 
 TEST_CASE("Booleans", "[boolean]") {
-  cxxopts::Options options("parses_floats", "parses floats correctly");
+  cxxopts::options options("parses_floats", "parses floats correctly");
   options.add_options()
     ("bool", "A Boolean", cxxopts::value<bool>())
     ("debug", "Debugging", cxxopts::value<bool>())
@@ -620,7 +620,7 @@ TEST_CASE("Booleans", "[boolean]") {
 
 TEST_CASE("std::vector", "[vector]") {
   std::vector<double> vector;
-  cxxopts::Options options("vector", " - tests vector");
+  cxxopts::options options("vector", " - tests vector");
   options.add_options()
       ("vector", "an vector option", cxxopts::value<std::vector<double>>(vector));
 
@@ -641,7 +641,7 @@ TEST_CASE("std::vector", "[vector]") {
 #ifdef CXXOPTS_HAS_OPTIONAL
 TEST_CASE("std::optional", "[optional]") {
   std::optional<std::string> optional;
-  cxxopts::Options options("optional", " - tests optional");
+  cxxopts::options options("optional", " - tests optional");
   options.add_options()
     ("optional", "an optional option", cxxopts::value<std::optional<std::string>>(optional));
 
@@ -658,7 +658,7 @@ TEST_CASE("std::optional", "[optional]") {
 #endif
 
 TEST_CASE("Unrecognised options", "[options]") {
-  cxxopts::Options options("unknown_options", " - test unknown options");
+  cxxopts::options options("unknown_options", " - test unknown options");
 
   options.add_options()
     ("long", "a long option")
@@ -688,7 +688,7 @@ TEST_CASE("Unrecognised options", "[options]") {
 }
 
 TEST_CASE("Allow bad short syntax", "[options]") {
-  cxxopts::Options options("unknown_options", " - test unknown options");
+  cxxopts::options options("unknown_options", " - test unknown options");
 
   options.add_options()
     ("long", "a long option")
@@ -715,7 +715,7 @@ TEST_CASE("Allow bad short syntax", "[options]") {
 }
 
 TEST_CASE("Option not present", "[options]") {
-  cxxopts::Options options("not_present", " - test option not present");
+  cxxopts::options options("not_present", " - test option not present");
   options.add_options()
     ("s", "a short option");
 
@@ -735,7 +735,7 @@ TEST_CASE("Option not present", "[options]") {
 }
 
 TEST_CASE("Invalid option syntax", "[options]") {
-  cxxopts::Options options("invalid_syntax", " - test invalid syntax");
+  cxxopts::options options("invalid_syntax", " - test invalid syntax");
 
   Argv av({
     "invalid_syntax",
@@ -751,7 +751,7 @@ TEST_CASE("Invalid option syntax", "[options]") {
 }
 
 TEST_CASE("Options empty", "[options]") {
-  cxxopts::Options options("Options list empty", " - test empty option list");
+  cxxopts::options options("Options list empty", " - test empty option list");
   options.add_options();
   options.add_options("");
   options.add_options("", {});
@@ -769,7 +769,7 @@ TEST_CASE("Options empty", "[options]") {
 }
 
 TEST_CASE("Initializer list with group", "[options]") {
-  cxxopts::Options options("Initializer list group", " - test initializer list with group");
+  cxxopts::options options("Initializer list group", " - test initializer list with group");
 
   options.add_options("", {
     {"a, address", "server address", cxxopts::value<std::string>()->default_value("127.0.0.1")},
@@ -806,7 +806,7 @@ TEST_CASE("Initializer list with group", "[options]") {
 }
 
 TEST_CASE("Option add with add_option(string, Option)", "[options]") {
-  cxxopts::Options options("Option add with add_option", " - test Option add with add_option(string, Option)");
+  cxxopts::options options("Option add with add_option", " - test Option add with add_option(string, Option)");
 
   cxxopts::option option_1("t,test", "test option", cxxopts::value<int>()->default_value("7"), "TEST");
 
@@ -835,12 +835,12 @@ TEST_CASE("Option add with add_option(string, Option)", "[options]") {
 
 TEST_CASE("Const array", "[const]") {
   const char* const option_list[] = {"empty", "options"};
-  cxxopts::Options options("Empty options", " - test constness");
+  cxxopts::options options("Empty options", " - test constness");
   auto result = options.parse(2, option_list);
 }
 
 TEST_CASE("Value from ENV variable", "[options]") {
-  cxxopts::Options options("Reads value from ENV", " - if no parameter value is passed");
+  cxxopts::options options("Reads value from ENV", " - if no parameter value is passed");
 
   options.add_options("", {
     {"b,bar", "bar option", cxxopts::value<int>()->env("CXXOPTS_BAR")},

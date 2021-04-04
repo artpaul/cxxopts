@@ -39,16 +39,16 @@ THE SOFTWARE.
 namespace cxxopts {
 
 static inline
-String
-toLocalString(std::string s) {
+cxx_string
+to_local_string(std::string s) {
   return icu::UnicodeString::fromUTF8(std::move(s));
 }
 
-class UnicodeStringIterator
+class unicode_string_iterator
   : public std::iterator<std::forward_iterator_tag, int32_t>
 {
 public:
-  UnicodeStringIterator(const icu::UnicodeString* string, int32_t pos)
+  unicode_string_iterator(const icu::UnicodeString* string, int32_t pos)
     : s(string)
     , i(pos)
   {
@@ -60,40 +60,40 @@ public:
   }
 
   bool
-  operator==(const UnicodeStringIterator& rhs) const {
+  operator==(const unicode_string_iterator& rhs) const {
     return s == rhs.s && i == rhs.i;
   }
 
   bool
-  operator!=(const UnicodeStringIterator& rhs) const {
+  operator!=(const unicode_string_iterator& rhs) const {
     return !(*this == rhs);
   }
 
-  UnicodeStringIterator&
+  unicode_string_iterator&
   operator++() {
     ++i;
     return *this;
   }
 
-  UnicodeStringIterator
+  unicode_string_iterator
   operator+(int32_t v) {
-    return UnicodeStringIterator(s, i + v);
+    return unicode_string_iterator(s, i + v);
   }
 
-  private:
+private:
   const icu::UnicodeString* s;
   int32_t i;
 };
 
 static inline
-String&
-stringAppend(String&s, String a) {
+cxx_string&
+string_append(cxx_string&s, cxx_string a) {
   return s.append(std::move(a));
 }
 
 static inline
-String&
-stringAppend(String& s, size_t n, UChar32 c) {
+cxx_string&
+string_append(cxx_string& s, size_t n, UChar32 c) {
   for (size_t i = 0; i != n; ++i) {
     s.append(c);
   }
@@ -103,8 +103,8 @@ stringAppend(String& s, size_t n, UChar32 c) {
 
 template <typename Iterator>
 static inline
-String&
-stringAppend(String& s, Iterator begin, Iterator end) {
+cxx_string&
+string_append(cxx_string& s, Iterator begin, Iterator end) {
   while (begin != end) {
     s.append(*begin);
     ++begin;
@@ -115,13 +115,13 @@ stringAppend(String& s, Iterator begin, Iterator end) {
 
 static inline
 size_t
-stringLength(const String& s) {
+string_length(const cxx_string& s) {
   return s.length();
 }
 
 static inline
 std::string
-toUTF8String(const String& s) {
+to_utf8_string(const cxx_string& s) {
   std::string result;
   s.toUTF8String(result);
 
@@ -130,7 +130,7 @@ toUTF8String(const String& s) {
 
 static inline
 bool
-empty(const String& s) {
+empty(const cxx_string& s) {
   return s.isEmpty();
 }
 
@@ -138,14 +138,14 @@ empty(const String& s) {
 
 namespace std {
 
-cxxopts::UnicodeStringIterator
+cxxopts::unicode_string_iterator
 begin(const icu::UnicodeString& s) {
-  return cxxopts::UnicodeStringIterator(&s, 0);
+  return cxxopts::unicode_string_iterator(&s, 0);
 }
 
-cxxopts::UnicodeStringIterator
+cxxopts::unicode_string_iterator
 end(const icu::UnicodeString& s) {
-  return cxxopts::UnicodeStringIterator(&s, s.length());
+  return cxxopts::unicode_string_iterator(&s, s.length());
 }
 
 } // namespace std
@@ -158,39 +158,39 @@ namespace cxxopts {
 template <typename T>
 static
 T
-toLocalString(T&& t) {
+to_local_string(T&& t) {
   return std::forward<T>(t);
 }
 
 static inline
 size_t
-stringLength(const String& s) {
+string_length(const cxx_string& s) {
   return s.length();
 }
 
 static inline
-String&
-stringAppend(String&s, const String& a) {
+cxx_string&
+string_append(cxx_string&s, const cxx_string& a) {
   return s.append(a);
 }
 
 static inline
-String&
-stringAppend(String& s, size_t n, char c) {
+cxx_string&
+string_append(cxx_string& s, size_t n, char c) {
   return s.append(n, c);
 }
 
 template <typename Iterator>
 static inline
-String&
-stringAppend(String& s, Iterator begin, Iterator end) {
+cxx_string&
+string_append(cxx_string& s, Iterator begin, Iterator end) {
   return s.append(begin, end);
 }
 
 template <typename T>
 static inline
 std::string
-toUTF8String(T&& t) {
+to_utf8_string(T&& t) {
   return std::forward<T>(t);
 }
 
@@ -233,15 +233,15 @@ const std::basic_regex<char> truthy_pattern
 const std::basic_regex<char> falsy_pattern
   ("(f|F)(alse)?|0");
 
-String
-format_option(const HelpOptionDetails& o) {
+cxx_string
+format_option(const help_option_details& o) {
   const auto& s = o.s;
   const auto& l = o.l;
 
-  String result(OPTION_PADDING, ' ');
+  cxx_string result(OPTION_PADDING, ' ');
 
   if (!s.empty()) {
-    result += "-" + toLocalString(s);
+    result += "-" + to_local_string(s);
     if (!l.empty()) {
       result += ",";
     }
@@ -250,14 +250,14 @@ format_option(const HelpOptionDetails& o) {
   }
 
   if (!l.empty()) {
-    result += " --" + toLocalString(l);
+    result += " --" + to_local_string(l);
   }
 
-  auto arg = !o.arg_help.empty() ? toLocalString(o.arg_help) : "arg";
+  auto arg = !o.arg_help.empty() ? to_local_string(o.arg_help) : "arg";
 
   if (!o.is_boolean) {
     if (o.has_implicit) {
-      result += " [=" + arg + "(=" + toLocalString(o.implicit_value) + ")]";
+      result += " [=" + arg + "(=" + to_local_string(o.implicit_value) + ")]";
     } else {
       result += " " + arg;
     }
@@ -266,9 +266,9 @@ format_option(const HelpOptionDetails& o) {
   return result;
 }
 
-String
+cxx_string
 format_description(
-  const HelpOptionDetails& o,
+  const help_option_details& o,
   size_t start,
   size_t allowed,
   bool tab_expansion)
@@ -277,16 +277,16 @@ format_description(
 
   if (o.has_default && (!o.is_boolean || o.default_value != "false")) {
     if(!o.default_value.empty()) {
-      desc += toLocalString(" (default: " + o.default_value + ")");
+      desc += to_local_string(" (default: " + o.default_value + ")");
     } else {
-      desc += toLocalString(" (default: \"\")");
+      desc += to_local_string(" (default: \"\")");
     }
   }
 
-  String result;
+  cxx_string result;
 
   if (tab_expansion) {
-    String desc2;
+    cxx_string desc2;
     size_t size = 0;
     for (auto c = std::begin(desc); c != std::end(desc); ++c) {
       if (*c == '\n') {
@@ -294,7 +294,7 @@ format_description(
         size = 0;
       } else if (*c == '\t') {
         auto skip = 8 - size % 8;
-        stringAppend(desc2, skip, ' ');
+        string_append(desc2, skip, ' ');
         size += skip;
       } else {
         desc2 += *c;
@@ -342,18 +342,18 @@ format_description(
     }
 
     if (appendNewLine) {
-      stringAppend(result, startLine, current);
+      string_append(result, startLine, current);
       startLine = current;
       lastSpace = current;
 
       if (*previous != '\n') {
-        stringAppend(result, "\n");
+        string_append(result, "\n");
       }
 
-      stringAppend(result, start, ' ');
+      string_append(result, start, ' ');
 
       if (*previous != '\n') {
-        stringAppend(result, lastSpace, current);
+        string_append(result, lastSpace, current);
       }
 
       onlyWhiteSpace = true;
@@ -367,7 +367,7 @@ format_description(
 
   //append whatever is left but ignore whitespace
   if (!onlyWhiteSpace) {
-    stringAppend(result, startLine, previous);
+    string_append(result, startLine, previous);
   }
 
   return result;
@@ -665,7 +665,7 @@ parse_value(const std::string& text, std::string& value) {
 option_details::option_details(
     std::string short_name,
     std::string long_name,
-    String desc,
+    cxx_string desc,
     std::shared_ptr<const value_base> val
   )
   : short_(std::move(short_name))
@@ -676,7 +676,7 @@ option_details::option_details(
 {
 }
 
-const String&
+const cxx_string&
 option_details::description() const {
   return desc_;
 }
@@ -789,8 +789,8 @@ parse_result::key_value::value() const {
 
 
 parse_result::parse_result(
-    NameHashMap&& keys,
-    ParsedHashMap&& values,
+    name_hash_map&& keys,
+    parsed_hash_map&& values,
     std::vector<key_value>&& sequential,
     std::vector<std::string>&& unmatched_args
   )
@@ -863,20 +863,20 @@ option::option(
 
 namespace {
 
-using PositionalListIterator = PositionalList::const_iterator;
+class option_parser {
+  using positional_list_iterator = positional_list::const_iterator;
 
-class OptionParser {
 public:
-  OptionParser(
-    const OptionMap& options,
-    const PositionalList& positional,
+  option_parser(
+    const option_map& options,
+    const positional_list& positional,
     bool allow_unrecognised);
 
   parse_result
   parse(int argc, const char* const* argv);
 
   bool
-  consume_positional(const std::string& a, PositionalListIterator& next);
+  consume_positional(const std::string& a, positional_list_iterator& next);
 
   void
   checked_parse_arg(
@@ -888,7 +888,7 @@ public:
 
   void
   add_to_option(
-    OptionMap::const_iterator iter,
+    option_map::const_iterator iter,
     const std::string& option,
     const std::string& arg);
 
@@ -905,17 +905,17 @@ public:
   parse_no_value(const std::shared_ptr<option_details>& details);
 
 private:
-  const OptionMap& options_;
-  const PositionalList& positional_;
+  const option_map& options_;
+  const positional_list& positional_;
   const bool allow_unrecognised_{};
 
   std::vector<parse_result::key_value> sequential_;
-  ParsedHashMap parsed_;
+  parsed_hash_map parsed_;
 };
 
-OptionParser::OptionParser(
-    const OptionMap& options,
-    const PositionalList& positional,
+option_parser::option_parser(
+    const option_map& options,
+    const positional_list& positional,
     const bool allow_unrecognised
   )
   : options_(options)
@@ -925,18 +925,18 @@ OptionParser::OptionParser(
 }
 
 void
-OptionParser::parse_default(const std::shared_ptr<option_details>& details) {
+option_parser::parse_default(const std::shared_ptr<option_details>& details) {
   // TODO: remove the duplicate code here
   parsed_[details->hash()].parse_default(details);
 }
 
 void
-OptionParser::parse_no_value(const std::shared_ptr<option_details>& details) {
+option_parser::parse_no_value(const std::shared_ptr<option_details>& details) {
   parsed_[details->hash()].parse_no_value(details);
 }
 
 void
-OptionParser::parse_option(
+option_parser::parse_option(
   const std::shared_ptr<option_details>& value,
   const std::string& /*name*/,
   const std::string& arg)
@@ -946,7 +946,7 @@ OptionParser::parse_option(
 }
 
 void
-OptionParser::checked_parse_arg(
+option_parser::checked_parse_arg(
   int argc,
   const char* const* argv,
   int& current,
@@ -970,8 +970,8 @@ OptionParser::checked_parse_arg(
 }
 
 void
-OptionParser::add_to_option(
-  OptionMap::const_iterator iter,
+option_parser::add_to_option(
+  option_map::const_iterator iter,
   const std::string& option,
   const std::string& arg)
 {
@@ -979,9 +979,9 @@ OptionParser::add_to_option(
 }
 
 bool
-OptionParser::consume_positional(
+option_parser::consume_positional(
   const std::string& a,
-  PositionalListIterator& next)
+  positional_list_iterator& next)
 {
   for (; next != positional_.end(); ++next) {
     const auto oi = options_.find(*next);
@@ -1002,10 +1002,10 @@ OptionParser::consume_positional(
 }
 
 parse_result
-OptionParser::parse(int argc, const char* const* argv) {
+option_parser::parse(int argc, const char* const* argv) {
   int current = 1;
   auto next_positional = positional_.begin();
-  NameHashMap keys;
+  name_hash_map keys;
   std::vector<std::string> unmatched;
 
   while (current != argc) {
@@ -1144,9 +1144,9 @@ OptionParser::parse(int argc, const char* const* argv) {
 } // namespace
 
 
-Options::Options(std::string program, std::string help_string)
+options::options(std::string program, std::string help_string)
   : program_(std::move(program))
-  , help_string_(toLocalString(std::move(help_string)))
+  , help_string_(to_local_string(std::move(help_string)))
   , custom_help_("[OPTION...]")
   , positional_help_("positional parameters")
   , width_(76)
@@ -1156,83 +1156,83 @@ Options::Options(std::string program, std::string help_string)
 {
 }
 
-Options&
-Options::positional_help(std::string help_text) {
+options&
+options::positional_help(std::string help_text) {
   positional_help_ = std::move(help_text);
   return *this;
 }
 
-Options&
-Options::custom_help(std::string help_text) {
+options&
+options::custom_help(std::string help_text) {
   custom_help_ = std::move(help_text);
   return *this;
 }
 
-Options&
-Options::show_positional_help() {
+options&
+options::show_positional_help() {
   show_positional_ = true;
   return *this;
 }
 
-Options&
-Options::allow_unrecognised_options() {
+options&
+options::allow_unrecognised_options() {
   allow_unrecognised_ = true;
   return *this;
 }
 
-Options&
-Options::set_width(size_t width) {
+options&
+options::set_width(size_t width) {
   width_ = width;
   return *this;
 }
 
-Options&
-Options::set_tab_expansion(bool expansion) {
+options&
+options::set_tab_expansion(bool expansion) {
   tab_expansion_ = expansion;
   return *this;
 }
 
 void
-Options::add_options(
+options::add_options(
   const std::string& group,
   std::initializer_list<option> options)
 {
-  OptionAdder option_adder(group, *this);
+  option_adder adder(group, *this);
   for (const auto& opt: options) {
-    option_adder(opt.opts_, opt.desc_, opt.value_, opt.arg_help_);
+    adder(opt.opts_, opt.desc_, opt.value_, opt.arg_help_);
   }
 }
 
 void
-Options::parse_positional(std::string option) {
+options::parse_positional(std::string option) {
   parse_positional(std::vector<std::string>{std::move(option)});
 }
 
 void
-Options::parse_positional(std::vector<std::string> options) {
+options::parse_positional(std::vector<std::string> options) {
   positional_ = std::move(options);
 
   positional_set_.insert(positional_.begin(), positional_.end());
 }
 
 void
-Options::parse_positional(std::initializer_list<std::string> options) {
+options::parse_positional(std::initializer_list<std::string> options) {
   parse_positional(std::vector<std::string>(std::move(options)));
 }
 
 parse_result
-Options::parse(int argc, const char* const* argv) {
-  return OptionParser(options_, positional_, allow_unrecognised_)
+options::parse(int argc, const char* const* argv) {
+  return option_parser(options_, positional_, allow_unrecognised_)
     .parse(argc, argv);
 }
 
 void
-Options::add_option(const std::string& group, const option& opt) {
+options::add_option(const std::string& group, const option& opt) {
     add_options(group, {opt});
 }
 
 void
-Options::add_option(
+options::add_option(
   const std::string& group,
   const std::string& s,
   const std::string& l,
@@ -1240,7 +1240,7 @@ Options::add_option(
   const std::shared_ptr<const value_base>& value,
   std::string arg_help)
 {
-  auto string_desc = toLocalString(std::move(desc));
+  auto string_desc = to_local_string(std::move(desc));
   auto details = std::make_shared<option_details>(s, l, string_desc, value);
 
   if (!s.empty()) {
@@ -1254,7 +1254,7 @@ Options::add_option(
   // Add the help details.
   auto& options = help_[group];
 
-  options.options.emplace_back(HelpOptionDetails{s, l, string_desc,
+  options.options.emplace_back(help_option_details{s, l, string_desc,
       value->get_default_value(), value->get_implicit_value(),
       std::move(arg_help),
       value->has_implicit(), value->has_default(),
@@ -1262,7 +1262,7 @@ Options::add_option(
 }
 
 void
-Options::add_one_option(
+options::add_one_option(
   const std::string& option,
   const std::shared_ptr<option_details>& details)
 {
@@ -1273,9 +1273,9 @@ Options::add_one_option(
   }
 }
 
-String
-Options::help_one_group(const std::string& g) const {
-  using OptionHelp = std::vector<std::pair<String, String>>;
+cxx_string
+options::help_one_group(const std::string& g) const {
+  using OptionHelp = std::vector<std::pair<cxx_string, cxx_string>>;
 
   auto group = help_.find(g);
   if (group == help_.end()) {
@@ -1284,10 +1284,10 @@ Options::help_one_group(const std::string& g) const {
 
   OptionHelp format;
   size_t longest = 0;
-  String result;
+  cxx_string result;
 
   if (!g.empty()) {
-    result += toLocalString(g);
+    result += to_local_string(g);
     result += '\n';
   }
 
@@ -1299,8 +1299,8 @@ Options::help_one_group(const std::string& g) const {
     }
 
     auto s = format_option(o);
-    longest = std::max(longest, stringLength(s));
-    format.push_back(std::make_pair(s, String()));
+    longest = std::max(longest, string_length(s));
+    format.push_back(std::make_pair(s, cxx_string()));
   }
   longest = std::min(longest, OPTION_LONGEST);
 
@@ -1324,13 +1324,13 @@ Options::help_one_group(const std::string& g) const {
       tab_expansion_);
 
     result += fiter->first;
-    if (stringLength(fiter->first) > longest) {
+    if (string_length(fiter->first) > longest) {
       result += '\n';
-      result += toLocalString(std::string(longest + OPTION_DESC_GAP, ' '));
+      result += to_local_string(std::string(longest + OPTION_DESC_GAP, ' '));
     }
     else {
-      result += toLocalString(std::string(longest + OPTION_DESC_GAP -
-        stringLength(fiter->first),
+      result += to_local_string(std::string(longest + OPTION_DESC_GAP -
+        string_length(fiter->first),
         ' '));
     }
     result += d;
@@ -1343,12 +1343,12 @@ Options::help_one_group(const std::string& g) const {
 }
 
 void
-Options::generate_group_help(
-  String& result,
+options::generate_group_help(
+  cxx_string& result,
   const std::vector<std::string>& print_groups) const
 {
   for (size_t i = 0; i != print_groups.size(); ++i) {
-    const String& group_help_text = help_one_group(print_groups[i]);
+    const cxx_string& group_help_text = help_one_group(print_groups[i]);
     if (empty(group_help_text)) {
       continue;
     }
@@ -1360,13 +1360,13 @@ Options::generate_group_help(
 }
 
 void
-Options::generate_all_groups_help(String& result) const {
+options::generate_all_groups_help(cxx_string& result) const {
   generate_group_help(result, groups());
 }
 
 std::string
-Options::help(const std::vector<std::string>& help_groups) const {
-  String result;
+options::help(const std::vector<std::string>& help_groups) const {
+  cxx_string result;
 
   if (!help_string_.empty()) {
     result += help_string_;
@@ -1374,13 +1374,13 @@ Options::help(const std::vector<std::string>& help_groups) const {
   }
 
   result += "usage: ";
-  result += toLocalString(program_);
+  result += to_local_string(program_);
   result += " ";
-  result += toLocalString(custom_help_);
+  result += to_local_string(custom_help_);
 
   if (!positional_.empty() && !positional_help_.empty()) {
     result += " ";
-    result += toLocalString(positional_help_);
+    result += to_local_string(positional_help_);
   }
 
   result += "\n\n";
@@ -1391,15 +1391,15 @@ Options::help(const std::vector<std::string>& help_groups) const {
     generate_group_help(result, help_groups);
   }
 
-  return toUTF8String(result);
+  return to_utf8_string(result);
 }
 
 std::vector<std::string>
-Options::groups() const {
+options::groups() const {
   std::vector<std::string> names;
 
   std::transform(help_.begin(), help_.end(), std::back_inserter(names),
-    [] (const std::map<std::string, HelpGroupDetails>::value_type& pair) {
+    [] (const std::map<std::string, help_group_details>::value_type& pair) {
       return pair.first;
     }
   );
@@ -1407,26 +1407,26 @@ Options::groups() const {
   return names;
 }
 
-const HelpGroupDetails&
-Options::group_help(const std::string& group) const {
+const help_group_details&
+options::group_help(const std::string& group) const {
   return help_.at(group);
 }
 
-Options::OptionAdder
-Options::add_options(std::string group)
+options::option_adder
+options::add_options(std::string group)
 {
-  return OptionAdder(std::move(group), *this);
+  return option_adder(std::move(group), *this);
 }
 
 
-Options::OptionAdder::OptionAdder(std::string group, Options& options)
+options::option_adder::option_adder(std::string group, options& options)
   : group_(std::move(group))
   , options_(options)
 {
 }
 
-Options::OptionAdder&
-Options::OptionAdder::operator()(
+options::option_adder&
+options::option_adder::operator()(
   const std::string& opts,
   const std::string& desc,
   const std::shared_ptr<const value_base>& value,
