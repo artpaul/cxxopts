@@ -518,7 +518,7 @@ TEST_CASE("Integer bounds", "[integer]")
 
 TEST_CASE("Overflow on boundary", "[integer]")
 {
-  using namespace cxxopts::values;
+  using namespace cxxopts::detail;
 
   int8_t si;
   uint8_t ui;
@@ -533,7 +533,7 @@ TEST_CASE("Overflow on boundary", "[integer]")
 
 TEST_CASE("Integer overflow", "[options]")
 {
-  using namespace cxxopts::values;
+  using namespace cxxopts::detail;
 
   cxxopts::options options("reject_overflow", "rejects overflowing integers");
   options.add_options()

@@ -68,6 +68,9 @@ THE SOFTWARE.
 
 namespace cxxopts {
 
+class options;
+class parse_result;
+
 static constexpr struct {
   uint8_t major, minor, patch;
 } version = {
@@ -81,16 +84,6 @@ static constexpr struct {
 #else
   using cxx_string = std::string;
 #endif
-
-namespace detail {
-
-template <typename T>
-struct is_container_type : std::false_type {};
-
-template <typename T>
-struct is_container_type<std::vector<T>> : std::true_type {};
-
-} // namespace detail
 
 /**
 * \defgroup Exceptions
@@ -184,6 +177,8 @@ void throw_or_mimic(const std::string& text) {
 }
 
 /**@}*/
+
+namespace detail {
 
 #if defined(__GNUC__)
 // GNU GCC with -Weffc++ will issue a warning regarding the upcoming class, we want to silence it:
@@ -342,8 +337,6 @@ private:
 # pragma GCC diagnostic pop
 #endif
 
-namespace values {
-
 void
 parse_value(const std::string& text, uint8_t& value);
 
@@ -422,6 +415,12 @@ parse_value(const std::string& text, std::optional<T>& value) {
 #endif
 
 template <typename T>
+struct is_container_type : std::false_type {};
+
+template <typename T>
+struct is_container_type<std::vector<T>> : std::true_type {};
+
+template <typename T>
 class basic_value : public value_base {
 public:
   basic_value()
@@ -466,7 +465,7 @@ protected:
 
   bool
   do_is_container() const override {
-    return detail::is_container_type<T>::value;
+    return is_container_type<T>::value;
   }
 
   void
@@ -479,24 +478,24 @@ private:
   T* store_{};
 };
 
-} // namespace values
+} // namespace detail
 
 /**
  * Creates value holder for the specific type.
  */
 template <typename T>
-std::shared_ptr<values::basic_value<T>>
+std::shared_ptr<detail::basic_value<T>>
 value() {
-  return std::make_shared<values::basic_value<T>>();
+  return std::make_shared<detail::basic_value<T>>();
 }
 
 /**
  * Creates value holder for the specific type.
  */
 template <typename T>
-std::shared_ptr<values::basic_value<T>>
+std::shared_ptr<detail::basic_value<T>>
 value(T& t) {
-  return std::make_shared<values::basic_value<T>>(&t);
+  return std::make_shared<detail::basic_value<T>>(&t);
 }
 
 class option_details {
@@ -505,18 +504,18 @@ public:
     std::string short_name,
     std::string long_name,
     cxx_string desc,
-    std::shared_ptr<const value_base> val);
+    std::shared_ptr<const detail::value_base> val);
 
   CXXOPTS_NODISCARD
   const cxx_string&
   description() const;
 
   CXXOPTS_NODISCARD
-  const value_base&
+  const detail::value_base&
   value() const;
 
   CXXOPTS_NODISCARD
-  std::shared_ptr<value_base>
+  std::shared_ptr<detail::value_base>
   make_storage() const;
 
   CXXOPTS_NODISCARD
@@ -538,7 +537,7 @@ private:
   /// Description of the option.
   const cxx_string desc_;
   const size_t hash_;
-  std::shared_ptr<const value_base> value_;
+  std::shared_ptr<const detail::value_base> value_;
 };
 
 /**
@@ -578,9 +577,9 @@ public:
         long_name_ == nullptr ? std::string() : *long_name_);
     }
 #ifdef CXXOPTS_NO_RTTI
-    return static_cast<const values::basic_value<T>&>(*value_).get();
+    return static_cast<const detail::basic_value<T>&>(*value_).get();
 #else
-    return dynamic_cast<const values::basic_value<T>&>(*value_).get();
+    return dynamic_cast<const detail::basic_value<T>&>(*value_).get();
 #endif
   }
 
@@ -609,7 +608,7 @@ private:
   const std::string* long_name_{nullptr};
   // Holding this pointer is safe, since option_value's only exist
   // in key-value pairs, where the key has the string we point to.
-  std::shared_ptr<value_base> value_;
+  std::shared_ptr<detail::value_base> value_;
   size_t count_{0};
   bool default_{false};
 };
@@ -640,7 +639,7 @@ public:
     template <typename T>
     T as() const {
       T result;
-      values::parse_value(value_, result);
+      detail::parse_value(value_, result);
       return result;
     }
 
@@ -695,36 +694,23 @@ private:
   std::vector<std::string> unmatched_;
 };
 
-struct option {
+class option {
+public:
   option(
     std::string opts,
     std::string desc,
-    std::shared_ptr<const value_base> value = ::cxxopts::value<bool>(),
+    std::shared_ptr<const detail::value_base> value = ::cxxopts::value<bool>(),
     std::string arg_help = {});
 
-  std::string opts_;
-  std::string desc_;
-  std::shared_ptr<const value_base> value_;
-  std::string arg_help_;
-};
+private:
+  friend class ::cxxopts::options;
 
-struct help_option_details {
-  std::string s;
-  std::string l;
-  cxx_string desc;
-  std::string default_value;
-  std::string implicit_value;
-  std::string arg_help;
-  bool has_implicit;
-  bool has_default;
-  bool is_container;
-  bool is_boolean;
-};
-
-struct help_group_details {
-  std::string name;
-  std::string description;
-  std::vector<help_option_details> options;
+  /// Short and long names of the option.
+  const std::string opts_;
+  /// Description of the option.
+  const std::string desc_;
+  const std::shared_ptr<const detail::value_base> value_;
+  const std::string arg_help_;
 };
 
 /**
@@ -732,6 +718,25 @@ struct help_group_details {
  */
 class options {
 public:
+  struct help_option_details {
+    std::string s;
+    std::string l;
+    cxx_string desc;
+    std::string default_value;
+    std::string implicit_value;
+    std::string arg_help;
+    bool has_implicit;
+    bool has_default;
+    bool is_container;
+    bool is_boolean;
+  };
+
+  struct help_group_details {
+    std::string name;
+    std::string description;
+    std::vector<help_option_details> options;
+  };
+
   class option_adder {
   public:
     option_adder(const std::string group, options& options);
@@ -740,7 +745,8 @@ public:
     operator() (
       const std::string& opts,
       const std::string& desc,
-      const std::shared_ptr<const value_base>& value = ::cxxopts::value<bool>(),
+      const std::shared_ptr<const detail::value_base>& value
+        = ::cxxopts::value<bool>(),
       const std::string arg_help = {});
 
   private:
@@ -832,13 +838,23 @@ private:
     const std::string& s,
     const std::string& l,
     std::string desc,
-    const std::shared_ptr<const value_base>& value,
+    const std::shared_ptr<const detail::value_base>& value,
     std::string arg_help);
 
   void
   add_one_option(
     const std::string& option,
     const std::shared_ptr<option_details>& details);
+
+  cxx_string
+  format_option(const help_option_details& o) const;
+
+  cxx_string
+  format_description(
+    const help_option_details& o,
+    size_t start,
+    size_t allowed,
+    bool tab_expansion) const;
 
   cxx_string
   help_one_group(const std::string& group) const;

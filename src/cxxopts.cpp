@@ -206,174 +206,32 @@ empty(const std::string& s) {
 #endif
 
 namespace cxxopts {
-namespace {
 
 #ifdef _WIN32
-  const std::string LQUOTE("\'");
-  const std::string RQUOTE("\'");
+  static const std::string LQUOTE("\'");
+  static const std::string RQUOTE("\'");
 #else
-  const std::string LQUOTE("‘");
-  const std::string RQUOTE("’");
+  static const std::string LQUOTE("‘");
+  static const std::string RQUOTE("’");
 #endif
 
-constexpr size_t OPTION_LONGEST = 30;
-constexpr size_t OPTION_DESC_GAP = 2;
-constexpr size_t OPTION_PADDING = 2;
+static constexpr size_t OPTION_LONGEST = 30;
+static constexpr size_t OPTION_DESC_GAP = 2;
+static constexpr size_t OPTION_PADDING = 2;
 
-const std::basic_regex<char> option_matcher
+static const std::basic_regex<char> option_matcher
   ("--([[:alnum:]][-_[:alnum:]]+)(=(.*))?|-([[:alnum:]]+)");
 
-const std::basic_regex<char> option_specifier
+static const std::basic_regex<char> option_specifier
     ("(([[:alnum:]]),)?[ ]*([[:alnum:]][-_[:alnum:]]*)?");
 
-const std::basic_regex<char> integer_pattern
+static const std::basic_regex<char> integer_pattern
   ("(-)?(0x)?([0-9a-zA-Z]+)|((0x)?0)");
-const std::basic_regex<char> truthy_pattern
+static const std::basic_regex<char> truthy_pattern
   ("(t|T)(rue)?|1");
-const std::basic_regex<char> falsy_pattern
+static const std::basic_regex<char> falsy_pattern
   ("(f|F)(alse)?|0");
 
-cxx_string
-format_option(const help_option_details& o) {
-  const auto& s = o.s;
-  const auto& l = o.l;
-
-  cxx_string result(OPTION_PADDING, ' ');
-
-  if (!s.empty()) {
-    result += "-" + to_local_string(s);
-    if (!l.empty()) {
-      result += ",";
-    }
-  } else {
-    result += "   ";
-  }
-
-  if (!l.empty()) {
-    result += " --" + to_local_string(l);
-  }
-
-  auto arg = !o.arg_help.empty() ? to_local_string(o.arg_help) : "arg";
-
-  if (!o.is_boolean) {
-    if (o.has_implicit) {
-      result += " [=" + arg + "(=" + to_local_string(o.implicit_value) + ")]";
-    } else {
-      result += " " + arg;
-    }
-  }
-
-  return result;
-}
-
-cxx_string
-format_description(
-  const help_option_details& o,
-  size_t start,
-  size_t allowed,
-  bool tab_expansion)
-{
-  auto desc = o.desc;
-
-  if (o.has_default && (!o.is_boolean || o.default_value != "false")) {
-    if(!o.default_value.empty()) {
-      desc += to_local_string(" (default: " + o.default_value + ")");
-    } else {
-      desc += to_local_string(" (default: \"\")");
-    }
-  }
-
-  cxx_string result;
-
-  if (tab_expansion) {
-    cxx_string desc2;
-    size_t size = 0;
-    for (auto c = std::begin(desc); c != std::end(desc); ++c) {
-      if (*c == '\n') {
-        desc2 += *c;
-        size = 0;
-      } else if (*c == '\t') {
-        auto skip = 8 - size % 8;
-        string_append(desc2, skip, ' ');
-        size += skip;
-      } else {
-        desc2 += *c;
-        ++size;
-      }
-    }
-    desc = desc2;
-  }
-
-  desc += " ";
-
-  auto current = std::begin(desc);
-  auto previous = current;
-  auto startLine = current;
-  auto lastSpace = current;
-
-  auto size = size_t{};
-
-  bool appendNewLine;
-  bool onlyWhiteSpace = true;
-
-  while (current != std::end(desc)) {
-    appendNewLine = false;
-
-    if (std::isblank(*previous)) {
-      lastSpace = current;
-    }
-
-    if (!std::isblank(*current)) {
-      onlyWhiteSpace = false;
-    }
-
-    while (*current == '\n') {
-      previous = current;
-      ++current;
-      appendNewLine = true;
-    }
-
-    if (!appendNewLine && size >= allowed) {
-      if (lastSpace != startLine) {
-        current = lastSpace;
-        previous = current;
-      }
-      appendNewLine = true;
-    }
-
-    if (appendNewLine) {
-      string_append(result, startLine, current);
-      startLine = current;
-      lastSpace = current;
-
-      if (*previous != '\n') {
-        string_append(result, "\n");
-      }
-
-      string_append(result, start, ' ');
-
-      if (*previous != '\n') {
-        string_append(result, lastSpace, current);
-      }
-
-      onlyWhiteSpace = true;
-      size = 0;
-    }
-
-    previous = current;
-    ++current;
-    ++size;
-  }
-
-  //append whatever is left but ignore whitespace
-  if (!onlyWhiteSpace) {
-    string_append(result, startLine, previous);
-  }
-
-  return result;
-}
-
-} // namespace
 
 option_error::option_error(const std::string& what_arg)
   : std::runtime_error(what_arg)
@@ -475,7 +333,7 @@ argument_incorrect_type::argument_incorrect_type(const std::string& arg)
 }
 
 
-namespace values {
+namespace detail {
 namespace {
 
 template <typename T, bool B>
@@ -659,14 +517,14 @@ parse_value(const std::string& text, std::string& value) {
   value = text;
 }
 
-} // namespace values
+} // namespace detail
 
 
 option_details::option_details(
     std::string short_name,
     std::string long_name,
     cxx_string desc,
-    std::shared_ptr<const value_base> val
+    std::shared_ptr<const detail::value_base> val
   )
   : short_(std::move(short_name))
   , long_(std::move(long_name))
@@ -681,12 +539,12 @@ option_details::description() const {
   return desc_;
 }
 
-const value_base&
+const detail::value_base&
 option_details::value() const {
     return *value_;
 }
 
-std::shared_ptr<value_base>
+std::shared_ptr<detail::value_base>
 option_details::make_storage() const {
   return value_->clone();
 }
@@ -850,7 +708,7 @@ parse_result::unmatched() const {
 option::option(
     std::string opts,
     std::string desc,
-    std::shared_ptr<const value_base> value,
+    std::shared_ptr<const detail::value_base> value,
     std::string arg_help
   )
   : opts_(std::move(opts))
@@ -1183,7 +1041,7 @@ options::add_option(
   const std::string& s,
   const std::string& l,
   std::string desc,
-  const std::shared_ptr<const value_base>& value,
+  const std::shared_ptr<const detail::value_base>& value,
   std::string arg_help)
 {
   auto string_desc = to_local_string(std::move(desc));
@@ -1208,14 +1066,154 @@ options::add_option(
 
 void
 options::add_one_option(
-  const std::string& option,
+  const std::string& name,
   const std::shared_ptr<option_details>& details)
 {
-  const auto in = options_.emplace(option, details);
+  const auto in = options_.emplace(name, details);
 
   if (!in.second) {
-    throw_or_mimic<option_exists_error>(option);
+    throw_or_mimic<option_exists_error>(name);
   }
+}
+
+cxx_string
+options::format_option(const help_option_details& o) const {
+  const auto& s = o.s;
+  const auto& l = o.l;
+
+  cxx_string result(OPTION_PADDING, ' ');
+
+  if (!s.empty()) {
+    result += "-" + to_local_string(s);
+    if (!l.empty()) {
+      result += ",";
+    }
+  } else {
+    result += "   ";
+  }
+
+  if (!l.empty()) {
+    result += " --" + to_local_string(l);
+  }
+
+  auto arg = !o.arg_help.empty() ? to_local_string(o.arg_help) : "arg";
+
+  if (!o.is_boolean) {
+    if (o.has_implicit) {
+      result += " [=" + arg + "(=" + to_local_string(o.implicit_value) + ")]";
+    } else {
+      result += " " + arg;
+    }
+  }
+
+  return result;
+}
+
+cxx_string
+options::format_description(
+  const help_option_details& o,
+  size_t start,
+  size_t allowed,
+  bool tab_expansion) const
+{
+  auto desc = o.desc;
+
+  if (o.has_default && (!o.is_boolean || o.default_value != "false")) {
+    if(!o.default_value.empty()) {
+      desc += to_local_string(" (default: " + o.default_value + ")");
+    } else {
+      desc += to_local_string(" (default: \"\")");
+    }
+  }
+
+  cxx_string result;
+
+  if (tab_expansion) {
+    cxx_string desc2;
+    size_t size = 0;
+    for (auto c = std::begin(desc); c != std::end(desc); ++c) {
+      if (*c == '\n') {
+        desc2 += *c;
+        size = 0;
+      } else if (*c == '\t') {
+        auto skip = 8 - size % 8;
+        string_append(desc2, skip, ' ');
+        size += skip;
+      } else {
+        desc2 += *c;
+        ++size;
+      }
+    }
+    desc = desc2;
+  }
+
+  desc += " ";
+
+  auto current = std::begin(desc);
+  auto previous = current;
+  auto startLine = current;
+  auto lastSpace = current;
+
+  auto size = size_t{};
+
+  bool appendNewLine;
+  bool onlyWhiteSpace = true;
+
+  while (current != std::end(desc)) {
+    appendNewLine = false;
+
+    if (std::isblank(*previous)) {
+      lastSpace = current;
+    }
+
+    if (!std::isblank(*current)) {
+      onlyWhiteSpace = false;
+    }
+
+    while (*current == '\n') {
+      previous = current;
+      ++current;
+      appendNewLine = true;
+    }
+
+    if (!appendNewLine && size >= allowed) {
+      if (lastSpace != startLine) {
+        current = lastSpace;
+        previous = current;
+      }
+      appendNewLine = true;
+    }
+
+    if (appendNewLine) {
+      string_append(result, startLine, current);
+      startLine = current;
+      lastSpace = current;
+
+      if (*previous != '\n') {
+        string_append(result, "\n");
+      }
+
+      string_append(result, start, ' ');
+
+      if (*previous != '\n') {
+        string_append(result, lastSpace, current);
+      }
+
+      onlyWhiteSpace = true;
+      size = 0;
+    }
+
+    previous = current;
+    ++current;
+    ++size;
+  }
+
+  //append whatever is left but ignore whitespace
+  if (!onlyWhiteSpace) {
+    string_append(result, startLine, previous);
+  }
+
+  return result;
 }
 
 cxx_string
@@ -1352,7 +1350,7 @@ options::groups() const {
   return names;
 }
 
-const help_group_details&
+const options::help_group_details&
 options::group_help(const std::string& group) const {
   return help_.at(group);
 }
@@ -1374,7 +1372,7 @@ options::option_adder&
 options::option_adder::operator()(
   const std::string& opts,
   const std::string& desc,
-  const std::shared_ptr<const value_base>& value,
+  const std::shared_ptr<const detail::value_base>& value,
   std::string arg_help)
 {
   std::match_results<const char*> result;
