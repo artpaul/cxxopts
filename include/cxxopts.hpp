@@ -62,7 +62,7 @@ THE SOFTWARE.
 # define CXXOPTS_VECTOR_DELIMITER ','
 #endif
 
-#define CXXOPTS__VERSION_MAJOR 3
+#define CXXOPTS__VERSION_MAJOR 4
 #define CXXOPTS__VERSION_MINOR 0
 #define CXXOPTS__VERSION_PATCH 0
 
@@ -842,9 +842,9 @@ private:
   std::string custom_help_;
   std::string positional_help_;
   size_t width_{};
-  bool show_positional_;
-  bool allow_unrecognised_;
-  bool tab_expansion_;
+  bool show_positional_{};
+  bool allow_unrecognised_{};
+  bool tab_expansion_{};
 
   /// Named options.
   /// Short and long names exist as separate entries but

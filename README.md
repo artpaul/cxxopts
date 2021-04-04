@@ -1,5 +1,3 @@
-[![Build Status](https://travis-ci.org/jarro2783/cxxopts.svg?branch=master)](https://travis-ci.org/jarro2783/cxxopts)
-
 # Release versions
 
 Note that `master` is generally a work in progress, and you probably want to use a
@@ -14,9 +12,9 @@ yet unreleased, current master) version 3 that you should be aware of. If you ar
 The parser no longer modifies its arguments, so you can pass a const `argc` and
 `argv` and expect them not to be changed.
 
-The `ParseResult` object no longer depends on the parser. So it can be returned
+The `parse_result` object no longer depends on the parser. So it can be returned
 from a scope outside the parser and still work. Now that the inputs are not
-modified, `ParseResult` stores a list of the unmatched arguments. These are
+modified, `parse_result` stores a list of the unmatched arguments. These are
 retrieved like follows:
 
 ```cpp
@@ -48,10 +46,10 @@ Additionally, anything after `--` will be parsed as a positional argument.
 #include <cxxopts.hpp>
 ```
 
-Create a `cxxopts::Options` instance.
+Create a `cxxopts::options` instance.
 
 ```cpp
-cxxopts::Options options("MyProgram", "One line description of MyProgram");
+cxxopts::options options("MyProgram", "One line description of MyProgram");
 ```
 
 Then use `add_options`.
@@ -109,9 +107,9 @@ result.unmatched()
 
 Exceptional situations throw C++ exceptions. There are two types of
 exceptions: errors defining the options, and errors when parsing a list of
-arguments. All exceptions derive from `cxxopts::OptionException`. Errors
-defining options derive from `cxxopts::OptionSpecException` and errors
-parsing arguments derive from `cxxopts::OptionParseException`.
+arguments. All exceptions derive from `cxxopts::option_error`. Errors
+defining options derive from `cxxopts::spec_error` and errors
+parsing arguments derive from `cxxopts::parse_error`.
 
 All exceptions define a `what()` function to get a printable string
 explaining the error.
@@ -216,7 +214,7 @@ Putting all together:
 ```cpp
 int main(int argc, char** argv)
 {
-    cxxopts::Options options("test", "A brief description");
+    cxxopts::options options("test", "A brief description");
 
     options.add_options()
         ("b,bar", "Param bar", cxxopts::value<std::string>())
@@ -256,6 +254,3 @@ The following compilers are known not to work:
 
 * MSVC 2013
 
-# TODO list
-
-* Allow unrecognised options.
