@@ -52,9 +52,9 @@ function(cxxopts_use_unicode)
     find_package(PkgConfig)
     pkg_check_modules(ICU REQUIRED icu-uc)
 
-    target_link_libraries(cxxopts INTERFACE ${ICU_LDFLAGS})
-    target_compile_options(cxxopts INTERFACE ${ICU_CFLAGS})
-    target_compile_definitions(cxxopts INTERFACE CXXOPTS_USE_UNICODE)
+    target_link_libraries(cxxopts PUBLIC ${ICU_LDFLAGS})
+    target_compile_options(cxxopts PUBLIC ${ICU_CFLAGS})
+    target_compile_definitions(cxxopts PUBLIC CXXOPTS_USE_UNICODE)
 endfunction()
 
 # Request C++11 without gnu extension for the whole project and enable more warnings
