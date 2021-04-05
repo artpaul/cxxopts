@@ -38,8 +38,8 @@ public:
 
 private:
   const int argc_;
-  std::unique_ptr<const char*[]> argv_;
-  std::vector<std::unique_ptr<char[]>> args_;
+  std::unique_ptr<const char*[]> argv_{};
+  std::vector<std::unique_ptr<char[]>> args_{};
 };
 
 } // namespace

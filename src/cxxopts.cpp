@@ -217,7 +217,6 @@ namespace cxxopts {
 
 static constexpr size_t OPTION_LONGEST = 30;
 static constexpr size_t OPTION_DESC_GAP = 2;
-static constexpr size_t OPTION_PADDING = 2;
 
 static const std::basic_regex<char> option_matcher
   ("--([[:alnum:]][-_[:alnum:]]+)(=(.*))?|-([[:alnum:]]+)");
@@ -939,10 +938,10 @@ private:
 private:
   const option_map& options_;
   const positional_list& positional_;
-  const bool allow_unrecognised_{};
+  const bool allow_unrecognised_;
 
-  std::vector<parse_result::key_value> sequential_;
-  parse_result::parsed_hash_map parsed_;
+  std::vector<parse_result::key_value> sequential_{};
+  parse_result::parsed_hash_map parsed_{};
 };
 
 options::options(std::string program, std::string help_string)
@@ -996,17 +995,17 @@ options::set_tab_expansion(bool expansion) {
 void
 options::add_options(
   const std::string& group,
-  std::initializer_list<option> options)
+  std::initializer_list<option> opts)
 {
   option_adder adder(group, *this);
-  for (const auto& opt: options) {
+  for (const auto& opt: opts) {
     adder(opt.opts_, opt.desc_, opt.value_, opt.arg_help_);
   }
 }
 
 void
-options::parse_positional(std::vector<std::string> options) {
-  positional_ = std::move(options);
+options::parse_positional(std::vector<std::string> opts) {
+  positional_ = std::move(opts);
   positional_set_ = std::unordered_set<std::string>(
     positional_.begin(), positional_.end()
   );
@@ -1043,13 +1042,18 @@ options::add_option(
   }
 
   // Add the help details.
-  auto& options = help_[group];
-
-  options.options.emplace_back(help_option_details{s, l, string_desc,
-      value->get_default_value(), value->get_implicit_value(),
-      std::move(arg_help),
-      value->has_implicit(), value->has_default(),
-      value->is_container(), value->is_boolean()});
+  help_option_details help_opt;
+  help_opt.s = s;
+  help_opt.l = l;
+  help_opt.desc = std::move(string_desc);
+  help_opt.default_value = value->get_default_value();
+  help_opt.implicit_value = value->get_implicit_value();
+  help_opt.arg_help = std::move(arg_help);
+  help_opt.has_implicit = value->has_implicit();
+  help_opt.has_default = value->has_default();
+  help_opt.is_container = value->is_container();
+  help_opt.is_boolean = value->is_boolean();
+  help_[group].options.push_back(std::move(help_opt));
 }
 
 void
@@ -1069,7 +1073,7 @@ options::format_option(const help_option_details& o) const {
   const auto& s = o.s;
   const auto& l = o.l;
 
-  cxx_string result(OPTION_PADDING, ' ');
+  cxx_string result = "  ";
 
   if (!s.empty()) {
     result += "-" + to_local_string(s);
@@ -1299,7 +1303,7 @@ std::string
 options::help(const std::vector<std::string>& help_groups) const {
   cxx_string result;
 
-  if (!help_string_.empty()) {
+  if (!empty(help_string_)) {
     result += help_string_;
     result += '\n';
   }

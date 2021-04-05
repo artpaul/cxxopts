@@ -309,9 +309,9 @@ private:
   value_base(const value_base& rhs) = delete;
 
 private:
-  std::string default_value_;
-  std::string env_var_;
-  std::string implicit_value_;
+  std::string default_value_{};
+  std::string env_var_{};
+  std::string implicit_value_{};
 
   bool default_{false};
   bool env_{false};
@@ -442,7 +442,11 @@ protected:
   }
 
 private:
-  std::unique_ptr<T> result_;
+  basic_value(const basic_value& rhs) = delete;
+  basic_value& operator=(const basic_value& rhs) = delete;
+
+private:
+  std::unique_ptr<T> result_{};
   T* store_{};
 };
 
@@ -568,10 +572,10 @@ private:
   void
   ensure_value(const std::shared_ptr<option_details>& details);
 
-  std::string long_name_;
+  std::string long_name_{};
   // Holding this pointer is safe, since option_value's only exist
   // in key-value pairs, where the key has the string we point to.
-  std::shared_ptr<detail::value_base> value_;
+  std::shared_ptr<detail::value_base> value_{};
   size_t count_{0};
   bool default_{false};
 };
@@ -650,11 +654,11 @@ public:
   unmatched() const;
 
 private:
-  name_hash_map keys_;
-  parsed_hash_map values_;
-  std::vector<key_value> sequential_;
+  name_hash_map keys_{};
+  parsed_hash_map values_{};
+  std::vector<key_value> sequential_{};
   /// List of arguments that did not match any defined option.
-  std::vector<std::string> unmatched_;
+  std::vector<std::string> unmatched_{};
 };
 
 class option {
@@ -682,22 +686,22 @@ private:
 class options {
 public:
   struct help_option_details {
-    std::string s;
-    std::string l;
-    cxx_string desc;
-    std::string default_value;
-    std::string implicit_value;
-    std::string arg_help;
-    bool has_implicit;
-    bool has_default;
-    bool is_container;
-    bool is_boolean;
+    std::string s{};
+    std::string l{};
+    cxx_string desc{};
+    std::string default_value{};
+    std::string implicit_value{};
+    std::string arg_help{};
+    bool has_implicit{};
+    bool has_default{};
+    bool is_container{};
+    bool is_boolean{};
   };
 
   struct help_group_details {
-    std::string name;
-    std::string description;
-    std::vector<help_option_details> options;
+    std::string name{};
+    std::string description{};
+    std::vector<help_option_details> options{};
   };
 
   class option_adder {
@@ -838,8 +842,8 @@ private:
   using positional_list = std::vector<std::string>;
 
   const std::string program_;
-  const cxx_string help_string_{};
-  std::string custom_help_;
+  const cxx_string help_string_;
+  std::string custom_help_{};
   std::string positional_help_;
   size_t width_{};
   bool show_positional_{};
@@ -849,12 +853,12 @@ private:
   /// Named options.
   /// Short and long names exist as separate entries but
   /// point to the same options object.
-  option_map options_;
+  option_map options_{};
   /// List of named positional arguments.
-  positional_list positional_;
-  std::unordered_set<std::string> positional_set_;
+  positional_list positional_{};
+  std::unordered_set<std::string> positional_set_{};
   /// Mapping from groups to help options.
-  std::map<std::string, help_group_details> help_;
+  std::map<std::string, help_group_details> help_{};
 };
 
 } // namespace cxxopts
