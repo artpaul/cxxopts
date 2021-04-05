@@ -57,6 +57,24 @@ TEST_CASE("Value", "traits") {
   CHECK(cxxopts::value<std::vector<std::string>>()->is_container());
 }
 
+TEST_CASE("Question mark help", "[options]") {
+    cxxopts::options options("test_short", " - test question mark");
+
+    options.add_options()
+        ("?,help", "show help")
+        ("v", "verbose");
+
+    {
+        Argv argv({"test_short", "-?"});
+        CHECK(options.parse(argv.argc(), argv.argv()).count("help") == 1);
+    }
+
+    {
+        Argv argv({"test_short", "-v?"});
+        CHECK_THROWS_AS(options.parse(argv.argc(), argv.argv()), cxxopts::option_syntax_error&);
+    }
+}
+
 TEST_CASE("Basic options", "[options]")
 {
   cxxopts::options options("tester", " - test basic options");

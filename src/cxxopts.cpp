@@ -219,10 +219,10 @@ static constexpr size_t OPTION_LONGEST = 30;
 static constexpr size_t OPTION_DESC_GAP = 2;
 
 static const std::basic_regex<char> option_matcher
-  ("--([[:alnum:]][-_[:alnum:]]+)(=(.*))?|-([[:alnum:]]+)");
+  ("--([[:alnum:]][-_[:alnum:]]+)(=(.*))?|-(\\?|[[:alnum:]]+)");
 
 static const std::basic_regex<char> option_specifier
-    ("(([[:alnum:]]),)?[ ]*([[:alnum:]][-_[:alnum:]]*)?");
+    ("((\\?|[[:alnum:]]),)?[ ]*([[:alnum:]][-_[:alnum:]]*)?");
 
 static const std::basic_regex<char> integer_pattern
   ("(-)?(0x)?([0-9a-zA-Z]+)|((0x)?0)");
