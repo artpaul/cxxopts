@@ -623,7 +623,8 @@ public:
       name_hash_map&& keys,
       parsed_hash_map&& values,
       std::vector<key_value>&& sequential,
-      std::vector<std::string>&& unmatched_args);
+      std::vector<std::string>&& unmatched_args,
+      size_t consumed);
 
   parse_result& operator=(const parse_result&) = default;
   parse_result& operator=(parse_result&&) = default;
@@ -648,6 +649,12 @@ public:
   arguments() const;
 
   /**
+   * Returns number of consumed command line arguments.
+   */
+  size_t
+  consumed() const;
+
+  /**
    * Returns list of unmatched arguments.
    */
   const std::vector<std::string>&
@@ -659,6 +666,8 @@ private:
   std::vector<key_value> sequential_{};
   /// List of arguments that did not match any defined option.
   std::vector<std::string> unmatched_{};
+  /// Number of consument command line arguments.
+  size_t consumed_arguments_{0};
 };
 
 class option {
@@ -737,10 +746,16 @@ public:
   allow_unrecognised_options();
 
   options&
-  set_width(size_t width);
+  set_tab_expansion(bool expansion = true);
 
   options&
-  set_tab_expansion(bool expansion=true);
+  set_width(size_t width);
+
+  /**
+   * Stop parsing at first positional argument.
+   */
+  options&
+  stop_on_positional();
 
   option_adder
   add_options(std::string group = {});
@@ -845,14 +860,20 @@ private:
   const cxx_string help_string_;
   std::string custom_help_{};
   std::string positional_help_;
-  size_t width_{};
-  bool show_positional_{};
-  bool allow_unrecognised_{};
-  bool tab_expansion_{};
+  size_t width_{76};
+  /// Allow consume unrecognized options
+  /// instead of throwing an error.
+  bool allow_unrecognised_{false};
+  /// Show help for options bonded to positional arguments.
+  bool show_positional_{false};
+  /// Stop parsing at first positional argument.
+  bool stop_on_positional_{false};
+  /// Replace tab with spaces.
+  bool tab_expansion_{false};
 
   /// Named options.
   /// Short and long names exist as separate entries but
-  /// point to the same options object.
+  /// point to the same object.
   option_map options_{};
   /// List of named positional arguments.
   positional_list positional_{};

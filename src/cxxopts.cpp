@@ -25,6 +25,7 @@ THE SOFTWARE.
 
 #include "cxxopts.hpp"
 
+#include <cassert>
 #include <cstdlib>
 #include <regex>
 
@@ -644,12 +645,14 @@ parse_result::parse_result(
     name_hash_map&& keys,
     parsed_hash_map&& values,
     std::vector<key_value>&& sequential,
-    std::vector<std::string>&& unmatched_args
+    std::vector<std::string>&& unmatched_args,
+    size_t consumed
   )
   : keys_(std::move(keys))
   , values_(std::move(values))
   , sequential_(std::move(sequential))
   , unmatched_(std::move(unmatched_args))
+  , consumed_arguments_(consumed)
 {
 }
 
@@ -693,6 +696,11 @@ parse_result::arguments() const {
   return sequential_;
 }
 
+size_t
+parse_result::consumed() const {
+  return consumed_arguments_;
+}
+
 const std::vector<std::string>&
 parse_result::unmatched() const {
   return unmatched_;
@@ -719,16 +727,18 @@ public:
   option_parser(
       const option_map& options,
       const positional_list& positional,
-      bool allow_unrecognised
+      bool allow_unrecognised,
+      bool stop_on_positional
     )
     : options_(options)
     , positional_(positional)
     , allow_unrecognised_(allow_unrecognised)
+    , stop_on_positional_(stop_on_positional)
   {
   }
 
   parse_result
-  parse(int argc, const char* const* argv) {
+  parse(const int argc, const char* const* argv) {
     int current = 1;
     auto next_positional = positional_.begin();
     parse_result::name_hash_map keys;
@@ -738,6 +748,9 @@ public:
       if (strcmp(argv[current], "--") == 0) {
         // Skip dash-dash argument.
         ++current;
+        if (stop_on_positional_) {
+          break;
+        }
         // Try to consume all remaining arguments as positional.
         for (; current < argc; ++current) {
           if (!consume_positional(argv[current], next_positional)) {
@@ -755,15 +768,16 @@ public:
       std::regex_match(argv[current], result, option_matcher);
 
       if (result.empty()) {
-        //not a flag
-
+        // Not a flag.
         // But if it starts with a `-`, then it's an error.
         if (argv[current][0] == '-' && argv[current][1] != '\0') {
           if (!allow_unrecognised_) {
             throw_or_mimic<option_syntax_error>(argv[current]);
           }
         }
-
+        if (stop_on_positional_) {
+          break;
+        }
         // If true is returned here then it was consumed, otherwise it is
         // ignored.
         if (!consume_positional(argv[current], next_positional)) {
@@ -860,11 +874,14 @@ public:
       parsed_.emplace(hash, option_value());
     }
 
+    assert(stop_on_positional_ || argc == current);
+
     return parse_result(
       std::move(keys),
       std::move(parsed_),
       std::move(sequential_),
-      std::move(unmatched));
+      std::move(unmatched),
+      current);
   }
 
 private:
@@ -939,6 +956,7 @@ private:
   const option_map& options_;
   const positional_list& positional_;
   const bool allow_unrecognised_;
+  const bool stop_on_positional_;
 
   std::vector<parse_result::key_value> sequential_{};
   parse_result::parsed_hash_map parsed_{};
@@ -949,10 +967,6 @@ options::options(std::string program, std::string help_string)
   , help_string_(to_local_string(std::move(help_string)))
   , custom_help_("[OPTION...]")
   , positional_help_("positional parameters")
-  , width_(76)
-  , show_positional_(false)
-  , allow_unrecognised_(false)
-  , tab_expansion_(false)
 {
 }
 
@@ -992,6 +1006,12 @@ options::set_tab_expansion(bool expansion) {
   return *this;
 }
 
+options&
+options::stop_on_positional() {
+  stop_on_positional_ = true;
+  return *this;
+}
+
 void
 options::add_options(
   const std::string& group,
@@ -1013,8 +1033,9 @@ options::parse_positional(std::vector<std::string> opts) {
 
 parse_result
 options::parse(int argc, const char* const* argv) const {
-  return option_parser(options_, positional_, allow_unrecognised_)
-    .parse(argc, argv);
+  return option_parser(
+    options_, positional_,
+    allow_unrecognised_, stop_on_positional_).parse(argc, argv);
 }
 
 void
@@ -1210,14 +1231,14 @@ options::format_description(
 
 cxx_string
 options::help_one_group(const std::string& g) const {
-  using OptionHelp = std::vector<std::pair<cxx_string, cxx_string>>;
+  using option_help = std::vector<std::pair<cxx_string, cxx_string>>;
 
   auto group = help_.find(g);
   if (group == help_.end()) {
-    return "";
+    return cxx_string();
   }
 
-  OptionHelp format;
+  option_help format;
   size_t longest = 0;
   cxx_string result;
 

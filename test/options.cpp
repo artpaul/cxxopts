@@ -144,6 +144,21 @@ TEST_CASE("Return parse result", "[parse result]") {
   CHECK(result["a"].as<std::string>() == "value");
 }
 
+TEST_CASE("Subcommand options", "[options]") {
+  const Argv argv({"test_subcommand", "-a", "value", "subcmd", "-a", "-x"});
+
+  cxxopts::options options("test_subcommand", " - test subcommand options");
+  options
+    .stop_on_positional()
+    .add_options()
+      ("a", "a short option", cxxopts::value<std::string>());
+
+  const auto result = options.parse(argv.argc(), argv.argv());
+  CHECK(result.count("a") == 1);
+  CHECK(result["a"].as<std::string>() == "value");
+  CHECK(result.consumed() == 3);
+}
+
 TEST_CASE("Short options", "[options]")
 {
   cxxopts::options options("test_short", " - test short options");
@@ -160,6 +175,7 @@ TEST_CASE("Short options", "[options]")
 
   CHECK(result.count("a") == 1);
   CHECK(result["a"].as<std::string>() == "value");
+  CHECK(result.consumed() == argc);
 
   REQUIRE_THROWS_AS(options.add_options()("", "nothing option"),
     cxxopts::invalid_option_format_error&);
