@@ -766,7 +766,7 @@ public:
   template <
     typename I,
     typename std::enable_if<
-      !std::is_same<typename std::iterator_traits<I>::value_type, void>::value>>
+      !std::is_same<typename std::iterator_traits<I>::value_type, void>::value>::type>
   void
   parse_positional(const I begin, const I end) {
     parse_positional(std::vector<std::string>(begin, end));
