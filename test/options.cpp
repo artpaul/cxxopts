@@ -64,12 +64,12 @@ TEST_CASE("Question mark help", "[options]") {
         ("?,help", "show help")
         ("v", "verbose");
 
-    {
+    SECTION("Valid use of question mark") {
         Argv argv({"test_short", "-?"});
         CHECK(options.parse(argv.argc(), argv.argv()).count("help") == 1);
     }
 
-    {
+    SECTION("Invalid use of qestion mark") {
         Argv argv({"test_short", "-v?"});
         CHECK_THROWS_AS(options.parse(argv.argc(), argv.argv()), cxxopts::option_syntax_error&);
     }
@@ -128,6 +128,20 @@ TEST_CASE("Basic options", "[options]")
   CHECK(arguments[3].key() == "av");
 
   CHECK_THROWS_AS(result["nothing"].as<std::string>(), cxxopts::option_has_no_value_error&);
+}
+
+TEST_CASE("Return parse result", "[parse result]") {
+  auto parse = [&] () {
+    const Argv argv({"test_short", "-a", "value"});
+    cxxopts::options spec("test_short", " - test short options");
+    spec.add_options()
+      ("a", "a short option", cxxopts::value<std::string>());
+    return spec.parse(argv.argc(), argv.argv());
+  };
+
+  const auto result = parse();
+  CHECK(result.count("a") == 1);
+  CHECK(result["a"].as<std::string>() == "value");
 }
 
 TEST_CASE("Short options", "[options]")
@@ -910,14 +924,12 @@ TEST_CASE("Value from ENV variable", "[options]") {
   putenv((char*)"CXXOPTS_BAR=8");
   putenv((char*)"CXXOPTS_BAZ=9");
 
-  Argv argv_({
-       "test",
-       "--foo",
-       "5"
-     });
-  auto argc = argv_.argc();
-  const char** argv = argv_.argv();
-  auto result = options.parse(argc, argv);
+  const Argv argv({
+    "test",
+    "--foo",
+    "5"
+  });
+  auto result = options.parse(argv.argc(), argv.argv());
 
   CHECK(result.arguments().size()==1);
   CHECK(options.groups().size() == 1);
