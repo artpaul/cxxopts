@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.com/artpaul/cxxopts.svg?branch=master)](https://travis-ci.com/artpaul/cxxopts)
+
 # Release versions
 
 Note that `master` is generally a work in progress, and you probably want to use a
