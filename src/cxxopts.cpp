@@ -223,7 +223,7 @@ static const std::basic_regex<char> option_matcher
   ("--([[:alnum:]][-_[:alnum:]]+)(=(.*))?|-(\\?|[[:alnum:]]+)");
 
 static const std::basic_regex<char> option_specifier
-    ("((\\?|[[:alnum:]]),)?[ ]*([[:alnum:]][-_[:alnum:]]*)?");
+  ("((\\?|[[:alnum:]]),)?[ ]*([[:alnum:]][-_[:alnum:]]*)?");
 
 static const std::basic_regex<char> integer_pattern
   ("(-)?(0x)?([0-9a-zA-Z]+)|((0x)?0)");
@@ -914,6 +914,39 @@ private:
     return false;
   }
 
+  void check_value_not_option(
+    const std::string& name,
+    const char* const arg) const
+  {
+      // Do not allow silently consume dash-dash as a value
+      // because it can be a positional separator.
+      if (strcmp(arg, "--") == 0) {
+        throw_or_mimic<missing_argument_error>(name);
+      }
+
+      std::cmatch result;
+      std::regex_match(arg, result, option_matcher);
+
+      // The argument does not match an option format
+      // so that it can be safely consumed as a value.
+      if (result.empty()) {
+        return;
+      }
+
+      auto check_name = [&] (const std::string& opt) {
+        if (options_.find(opt) != options_.end()) {
+          throw_or_mimic<missing_argument_error>(name);
+        }
+      };
+      // Check that the argument does not match any
+      // existing option.
+      if (result[4].length()) {
+        check_name(result[4].str().substr(0, 1));
+      } else if (result[1].length()) {
+        check_name(result[1]);
+      }
+  }
+
   void
   checked_parse_arg(
     const int argc,
@@ -925,6 +958,11 @@ private:
     if (value->value()->has_implicit()) {
       parse_option(value, name, value->value()->get_implicit_value());
     } else if (current < argc - 1) {
+      // Check that we do not silently consume any option as a value
+      // of another option.
+      if (argv[current + 1][0] == '-') {
+        check_value_not_option(name, argv[current + 1]);
+      }
       parse_option(value, name, argv[current + 1]);
       ++current;
     } else {

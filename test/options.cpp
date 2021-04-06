@@ -821,6 +821,45 @@ TEST_CASE("Option not present", "[options]") {
   }
 }
 
+TEST_CASE("Consume option as value", "[options]") {
+  cxxopts::options options("long_option", " - test consume option");
+  options.add_options()
+    ("f,first", "first option", cxxopts::value<std::string>())
+    ("s,second", "second option", cxxopts::value<std::string>());
+
+  SECTION("Absent value") {
+    const Argv argv({"long_option", "--first", "-s", "sv"});
+    CHECK_THROWS_AS(options.parse(argv.argc(), argv.argv()), cxxopts::missing_argument_error&);
+  }
+
+  SECTION("Consume dash-dash as value") {
+    const Argv argv({"long_option", "--first", "--", "-s", "sv"});
+    CHECK_THROWS_AS(options.parse(argv.argc(), argv.argv()), cxxopts::missing_argument_error&);
+  }
+
+  SECTION("Correct dash-dash value") {
+    const Argv argv({"long_option", "--first=--", "-s", "sv"});
+    const auto result = options.parse(argv.argc(), argv.argv());
+
+    CHECK(result.has("first"));
+    CHECK(result.has("second"));
+
+    CHECK(result["first"].as<std::string>() == "--");
+    CHECK(result["second"].as<std::string>() == "sv");
+  }
+
+  SECTION("Correct option-like value") {
+    const Argv argv({"long_option", "--first", "-o", "-s", "sv"});
+    const auto result = options.parse(argv.argc(), argv.argv());
+
+    CHECK(result.has("first"));
+    CHECK(result.has("second"));
+
+    CHECK(result["first"].as<std::string>() == "-o");
+    CHECK(result["second"].as<std::string>() == "sv");
+  }
+}
+
 TEST_CASE("Invalid option syntax", "[options]") {
   cxxopts::options options("invalid_syntax", " - test invalid syntax");
 
