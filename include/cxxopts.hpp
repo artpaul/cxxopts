@@ -135,13 +135,6 @@ public:
   explicit option_requires_argument_error(const std::string& option);
 };
 
-class option_not_has_argument_error : public parse_error {
-public:
-  option_not_has_argument_error(
-    const std::string& option,
-    const std::string& arg);
-};
-
 class option_not_present_error : public parse_error {
 public:
   explicit option_not_present_error(const std::string& option);
@@ -197,19 +190,19 @@ public:
 
   /** Returns whether the default value was set. */
   bool
-  has_default() const {
+  has_default() const noexcept {
     return default_;
   }
 
   /** Returns whether the env variable was set. */
   bool
-  has_env() const {
+  has_env() const noexcept {
     return env_;
   }
 
   /** Returns whether the implicit value was set. */
   bool
-  has_implicit() const {
+  has_implicit() const noexcept {
     return implicit_;
   }
 
@@ -265,13 +258,13 @@ public:
 
   /** Returns whether the type of the value is boolean. */
   bool
-  is_boolean() const {
+  is_boolean() const noexcept {
     return do_is_boolean();
   }
 
   /** Returns whether the type of the value is container. */
   bool
-  is_container() const {
+  is_container() const noexcept {
     return do_is_container();
   }
 
@@ -289,10 +282,10 @@ public:
 
 protected:
   virtual bool
-  do_is_boolean() const = 0;
+  do_is_boolean() const noexcept = 0;
 
   virtual bool
-  do_is_container() const = 0;
+  do_is_container() const noexcept = 0;
 
   virtual void
   do_parse(const std::string& text) const = 0;
@@ -306,9 +299,6 @@ protected:
       implicit_value_ = "true";
     }
   }
-
-private:
-  value_base(const value_base& rhs) = delete;
 
 private:
   std::string default_value_{};
@@ -383,7 +373,7 @@ parse_value(const std::string& text, std::vector<T>& value) {
   }
   std::stringstream in{text};
   std::string token;
-  while(!in.eof() && std::getline(in, token, CXXOPTS_VECTOR_DELIMITER)) {
+  while (!in.eof() && std::getline(in, token, CXXOPTS_VECTOR_DELIMITER)) {
     T v;
     parse_value(token, v);
     value.emplace_back(std::move(v));
@@ -429,12 +419,12 @@ public:
 
 protected:
   bool
-  do_is_boolean() const override {
+  do_is_boolean() const noexcept final override {
     return std::is_same<T, bool>::value;
   }
 
   bool
-  do_is_container() const override {
+  do_is_container() const noexcept final override {
     return is_container_type<T>::value;
   }
 

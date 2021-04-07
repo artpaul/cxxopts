@@ -294,18 +294,6 @@ option_requires_argument_error::option_requires_argument_error(
 }
 
 
-option_not_has_argument_error::option_not_has_argument_error(
-    const std::string& option,
-    const std::string& arg
-  )
-  : parse_error(
-      "Option " + LQUOTE + option + RQUOTE +
-      " does not take an argument, but argument " +
-      LQUOTE + arg + RQUOTE + " given")
-{
-}
-
-
 option_not_present_error::option_not_present_error(
     const std::string& option
   )
