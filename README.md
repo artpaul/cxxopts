@@ -1,42 +1,38 @@
 [![Build Status](https://travis-ci.com/artpaul/cxxopts.svg?branch=master)](https://travis-ci.com/artpaul/cxxopts)
 
-# Release versions
-
-Note that `master` is generally a work in progress, and you probably want to use a
-tagged release version.
-
-## Version 3 breaking changes
-
-If you have used version 2, there are a couple of breaking changes in (the as
-yet unreleased, current master) version 3 that you should be aware of. If you are new to
-`cxxopts` you can skip this section.
-
-The parser no longer modifies its arguments, so you can pass a const `argc` and
-`argv` and expect them not to be changed.
-
-The `parse_result` object no longer depends on the parser. So it can be returned
-from a scope outside the parser and still work. Now that the inputs are not
-modified, `parse_result` stores a list of the unmatched arguments. These are
-retrieved like follows:
-
-```cpp
-auto result = options.parse(argc, argv);
-result.unmatched(); // get the unmatched arguments
-```
-
-# Quick start
+# About
 
 This is a lightweight C++ option parser library, supporting the standard GNU
 style syntax for options.
 
+# Features
+
+Below are a few of the features which cxxopts supports:
+* **Flags / Switches** (i.e. bool fields)
+  - Both short and long versions supported (i.e. `-f` and `--flag` respectively)
+  - Supports combining short versions (i.e. `-fBgoZ` is the same as `-f -B -g -o -Z`)
+  - Supports multiple occurrences (i.e. `-vvv` or `-v -v -v`)
+* **Positional Arguments**
+  - Supports the Unix `--` meaning, only positional arguments follow
+* **Option Arguments** (i.e. those that take values)
+  - Both short and long versions supported (i.e. `-o value`, `-ovalue` and `--option value` or `--option=value` respectively)
+  - Supports multiple values (i.e. `-o <val1> -o <val2>`)
+  - Supports delimited values (i.e. `--option=val1,val2,val3`)
+* **Groups**: Arguments can be made part of a group for the purposes of displaying help messages.
+* **Default Values**
+  - Supports default value from ENV variable
+
+# Quick start
+
 Options can be given as:
 
     --long
-    --long=argument
-    --long argument
+    --long=<argument>
+    --long <argument>
     -a
     -ab
-    -abc argument
+    -abc <argument>
+    -c<argument>
 
 where c takes an argument, but a and b do not.
 
@@ -85,9 +81,6 @@ result["opt"].as<type>()
 to get its value. If "opt" doesn't exist, or isn't of the right type, then an
 exception will be thrown.
 
-Note that the result of `options.parse` should only be used as long as the
-`options` object that created it is in scope.
-
 ## Unrecognised arguments
 
 You can allow unrecognised arguments to be skipped. This applies to both
@@ -129,7 +122,7 @@ Positional arguments can be optionally parsed into one or more options.
 To set up positional arguments, call
 
 ```cpp
-options.parse_positional({"first", "second", "last"})
+options.parse_positional("first", "second", "last")
 ```
 
 where "last" should be the name of an option with a container type, and the
@@ -170,7 +163,7 @@ There is no way to disambiguate positional arguments from the value following
 a boolean, so we have chosen that they will be positional arguments, and
 therefore, `-o false` does not work.
 
-## `std::vector<T>` values
+## Vector values
 
 Parsing of list of values in form of an `std::vector<T>` is also supported, as long as `T`
 can be parsed. To separate single values in a list the definition `CXXOPTS_VECTOR_DELIMITER`
@@ -205,42 +198,48 @@ completely replaced by calling `options.custom_help`. Note that you might
 also want to override the positional help by calling `options.positional_help`.
 
 ## Value from ENV variable
+
 When parameter is not set, value will be fetched from an environment variable (if such variable is defined).
+
 ```cpp
 cxxopts::value<int>()->env("MY_VAR")
 ```
 
-## Example
+# Example
 
 Putting all together:
 ```cpp
-int main(int argc, char** argv)
-{
-    cxxopts::options options("test", "A brief description");
+#include <cxxopts.hpp>
 
-    options.add_options()
-        ("b,bar", "Param bar", cxxopts::value<std::string>())
-        ("d,debug", "Enable debugging", cxxopts::value<bool>()->default_value("false"))
-        ("f,foo", "Param foo", cxxopts::value<int>()->default_value("10"))
-        ("h,help", "Print usage")
-    ;
+int main(int argc, char** argv) {
+  cxxopts::options options("test", "A brief description");
 
-    auto result = options.parse(argc, argv);
+  options.add_options()
+    ("b,bar", "Param bar", cxxopts::value<std::string>())
+    ("d,debug", "Enable debugging", cxxopts::value<bool>()->default_value("false"))
+    ("f,foo", "Param foo", cxxopts::value<int>()->default_value("10"))
+    ("h,help", "Print usage");
 
-    if (result.count("help"))
-    {
-      std::cout << options.help() << std::endl;
-      exit(0);
-    }
-    bool debug = result["debug"].as<bool>();
-    std::string bar;
-    if (result.count("bar"))
-      bar = result["bar"].as<std::string>();
-    int foo = result["foo"].as<int>();
+  auto result = options.parse(argc, argv);
 
-    return 0;
+  if (result.count("help")) {
+    std::cout << options.help() << std::endl;
+    exit(0);
+  }
+  bool debug = result["debug"].as<bool>();
+  std::string bar;
+  if (result.count("bar"))
+    bar = result["bar"].as<std::string>();
+  int foo = result["foo"].as<int>();
+
+  return 0;
 }
 ```
+
+# Release versions
+
+Note that `master` is generally a work in progress, and you probably want to use a
+tagged release version.
 
 # Requirements
 
@@ -255,4 +254,3 @@ GCC >= 4.9 or clang >= 3.1 with libc++ are known to work.
 The following compilers are known not to work:
 
 * MSVC 2013
-
