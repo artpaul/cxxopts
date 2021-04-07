@@ -342,102 +342,140 @@ struct signed_check;
 template <typename T>
 struct signed_check<T, true> {
   template <typename U>
-  void
-  operator()(bool negative, U u, const std::string& text) {
+  bool
+  operator()(bool negative, U u) const noexcept {
     if (negative) {
-      if (u > static_cast<U>((std::numeric_limits<T>::min)())) {
-        throw_or_mimic<argument_incorrect_type>(text);
+      if (u > static_cast<U>(std::numeric_limits<T>::min())) {
+        return false;
       }
     } else {
       if (u > static_cast<U>((std::numeric_limits<T>::max)())) {
-        throw_or_mimic<argument_incorrect_type>(text);
+        return false;
       }
     }
+    return true;
   }
 };
 
 template <typename T>
 struct signed_check<T, false> {
   template <typename U>
-  void
-  operator()(bool, U, const std::string&) const noexcept {}
+  bool
+  operator()(bool, U) const noexcept {
+    return true;
+  }
 };
 
 template <typename T, typename U>
-void
-check_signed_range(bool negative, U value, const std::string& text) {
-  signed_check<T, std::numeric_limits<T>::is_signed>()(negative, value, text);
+bool
+check_signed_range(bool negative, U value) noexcept {
+  return signed_check<T, std::numeric_limits<T>::is_signed>()(negative, value);
 }
 
 template <typename R, typename T>
-void
-checked_negate(R& r, T&& t, const std::string&, std::true_type) {
+bool
+checked_negate(R& r, T&& t, std::true_type) noexcept {
   // if we got to here, then `t` is a positive number that fits into
   // `R`. So to avoid MSVC C4146, we first cast it to `R`.
   // See https://github.com/jarro2783/cxxopts/issues/62 for more details.
   r = static_cast<R>(-static_cast<R>(t-1)-1);
+  return true;
 }
 
 template <typename R, typename T>
-void
-checked_negate(R&, T&&, const std::string& text, std::false_type) {
-  throw_or_mimic<argument_incorrect_type>(text);
+bool
+checked_negate(R&, T&&, std::false_type) noexcept {
+  return false;
+}
+
+bool parse_to_uint64(const std::string& text, uint64_t& value, bool& negative) {
+  std::smatch match;
+  std::regex_match(text, match, integer_pattern);
+  // Not an integer value.
+  if (match.length() == 0) {
+    return false;
+  }
+  value = 0;
+  negative = match.length(1) > 0;
+  // Zero.
+  if (match.length(4) > 0) {
+    return true;
+  }
+  const auto value_match = match[3];
+  if (match.length(2) > 0) {
+    // Hex number.
+    for (auto vi = value_match.first; vi != value_match.second; ++vi) {
+      uint64_t digit = 0;
+
+      if (*vi >= '0' && *vi <= '9') {
+        digit = static_cast<uint64_t>(*vi - '0');
+      } else if (*vi >= 'a' && *vi <= 'f') {
+        digit = static_cast<uint64_t>(*vi - 'a' + 10);
+      } else if (*vi >= 'A' && *vi <= 'F') {
+        digit = static_cast<uint64_t>(*vi - 'A' + 10);
+      } else {
+        return false;
+      }
+
+      const uint64_t next = value * 16 + digit;
+      if (value > next) {
+        return false;
+      } else {
+        value = next;
+      }
+    }
+  } else {
+    // Decimal number.
+    for (auto vi = value_match.first; vi != value_match.second; ++vi) {
+      uint64_t digit = 0;
+
+      if (*vi >= '0' && *vi <= '9') {
+        digit = static_cast<uint64_t>(*vi - '0');
+      } else {
+        return false;
+      }
+
+      const uint64_t next = value * 10 + digit;
+      if (value > next) {
+        return false;
+      } else {
+        value = next;
+      }
+    }
+  }
+  return true;
 }
 
 template <typename T>
 void
 integer_parser(const std::string& text, T& value) {
-  std::smatch match;
-  std::regex_match(text, match, integer_pattern);
-
-  if (match.length() == 0) {
-    throw_or_mimic<argument_incorrect_type>(text);
-  }
-
-  if (match.length(4) > 0) {
-    value = 0;
-    return;
-  }
-
   using US = typename std::make_unsigned<T>::type;
 
-  constexpr bool is_signed = std::numeric_limits<T>::is_signed;
-  const bool negative = match.length(1) > 0;
-  const uint8_t base = match.length(2) > 0 ? 16 : 10;
+  uint64_t u64_result{0};
+  US result{0};
+  bool negative{false};
 
-  auto value_match = match[3];
-
-  US result = 0;
-
-  for (auto iter = value_match.first; iter != value_match.second; ++iter) {
-    US digit = 0;
-
-    if (*iter >= '0' && *iter <= '9') {
-      digit = static_cast<US>(*iter - '0');
-    } else if (base == 16 && *iter >= 'a' && *iter <= 'f') {
-      digit = static_cast<US>(*iter - 'a' + 10);
-    } else if (base == 16 && *iter >= 'A' && *iter <= 'F') {
-      digit = static_cast<US>(*iter - 'A' + 10);
-    } else {
-      throw_or_mimic<argument_incorrect_type>(text);
-    }
-
-    const US next = static_cast<US>(result * base + digit);
-    if (result > next) {
-      throw_or_mimic<argument_incorrect_type>(text);
-    }
-
-    result = next;
+  // Parse text to the uint64_t value.
+  if (!parse_to_uint64(text, u64_result, negative)) {
+    throw_or_mimic<argument_incorrect_type>(text);
   }
-
-  check_signed_range<T>(negative, result, text);
-
+  // Check unsigned overflow.
+  if (u64_result > std::numeric_limits<US>::max()) {
+    throw_or_mimic<argument_incorrect_type>(text);
+  } else {
+    result = static_cast<US>(u64_result);
+  }
+  // Check signed overflow.
+  if (!check_signed_range<T>(negative, result)) {
+    throw_or_mimic<argument_incorrect_type>(text);
+  }
+  // Negate value.
   if (negative) {
-    checked_negate<T>(
-      value,
-      result,
-      text,
-      std::integral_constant<bool, is_signed>());
+    if (!checked_negate<T>(value, result,
+        std::integral_constant<bool, std::numeric_limits<T>::is_signed>()))
+    {
+      throw_or_mimic<argument_incorrect_type>(text);
+    }
   } else {
     value = static_cast<T>(result);
   }
