@@ -326,9 +326,12 @@ option_has_no_value_error::option_has_no_value_error(
 }
 
 
-argument_incorrect_type::argument_incorrect_type(const std::string& arg)
+argument_incorrect_type::argument_incorrect_type(
+  const std::string& arg,
+  const std::string& type)
   : parse_error(
-    "Argument " + LQUOTE + arg + RQUOTE + " failed to parse")
+    "Argument " + LQUOTE + arg + RQUOTE + " failed to parse" +
+    (type.empty() ? std::string() : (": " + type + " expected")))
 {
 }
 
@@ -457,24 +460,24 @@ integer_parser(const std::string& text, T& value) {
 
   // Parse text to the uint64_t value.
   if (!parse_to_uint64(text, u64_result, negative)) {
-    throw_or_mimic<argument_incorrect_type>(text);
+    throw_or_mimic<argument_incorrect_type>(text, "integer");
   }
   // Check unsigned overflow.
   if (u64_result > std::numeric_limits<US>::max()) {
-    throw_or_mimic<argument_incorrect_type>(text);
+    throw_or_mimic<argument_incorrect_type>(text, "integer");
   } else {
     result = static_cast<US>(u64_result);
   }
   // Check signed overflow.
   if (!check_signed_range<T>(negative, result)) {
-    throw_or_mimic<argument_incorrect_type>(text);
+    throw_or_mimic<argument_incorrect_type>(text, "integer");
   }
   // Negate value.
   if (negative) {
     if (!checked_negate<T>(value, result,
         std::integral_constant<bool, std::numeric_limits<T>::is_signed>()))
     {
-      throw_or_mimic<argument_incorrect_type>(text);
+      throw_or_mimic<argument_incorrect_type>(text, "integer");
     }
   } else {
     value = static_cast<T>(result);
@@ -539,12 +542,12 @@ parse_value(const std::string& text, bool& value) {
     return;
   }
 
-  throw_or_mimic<argument_incorrect_type>(text);
+  throw_or_mimic<argument_incorrect_type>(text, "bool");
 }
 
 void parse_value(const std::string& text, char& c) {
   if (text.length() != 1) {
-    throw_or_mimic<argument_incorrect_type>(text);
+    throw_or_mimic<argument_incorrect_type>(text, "char");
   }
 
   c = text[0];

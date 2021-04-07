@@ -149,7 +149,9 @@ public:
 
 class argument_incorrect_type : public parse_error {
 public:
-  explicit argument_incorrect_type(const std::string& arg);
+  explicit argument_incorrect_type(
+    const std::string& arg,
+    const std::string& type = {});
 };
 
 class option_has_no_value_error : public option_error {
@@ -157,20 +159,20 @@ public:
   explicit option_has_no_value_error(const std::string& name);
 };
 
-template <typename T>
+template <typename T, typename ... Args>
 CXXOPTS_NORETURN
-void throw_or_mimic(const std::string& text) {
+void throw_or_mimic(Args&& ... args) {
   static_assert(std::is_base_of<std::exception, T>::value,
                 "throw_or_mimic only works on std::exception and "
                 "deriving classes");
 
 #ifndef CXXOPTS_NO_EXCEPTIONS
   // If CXXOPTS_NO_EXCEPTIONS is not defined, just throw
-  throw T{text};
+  throw T{std::forward<Args>(args)...};
 #else
   // Otherwise manually instantiate the exception, print what() to stderr,
   // and exit
-  T exception{text};
+  T exception{std::forward<Args>(args)...};
   std::cerr << exception.what() << std::endl;
   std::exit(EXIT_FAILURE);
 #endif
