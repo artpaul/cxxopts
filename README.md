@@ -20,6 +20,8 @@ Below are a few of the features which cxxopts supports:
   - Both short and long versions supported (i.e. `-o value`, `-ovalue` and `--option value` or `--option=value` respectively)
   - Supports multiple values (i.e. `-o <val1> -o <val2>`)
   - Supports delimited values (i.e. `--option=val1,val2,val3`)
+  - Supports custom parsers
+  - Supports vector of vector values (i.e `--opt=1,2,3 --opt=4,5,6`)
 * **Groups**: Arguments can be made part of a group for the purposes of displaying help messages
 * **Default Values**
   - Supports default value from ENV variable
@@ -95,14 +97,20 @@ therefore, `-o false` does not work.
 ## Vector values
 
 Parsing of list of values in form of an `std::vector<T>` is also supported, as long as `T`
-can be parsed. To separate single values in a list the definition `CXXOPTS_VECTOR_DELIMITER`
-is used, which is ',' by default. Ensure that you use no whitespaces between values because
-those would be interpreted as the next command-line option. Example for a command-line option
+can be parsed. To separate single values in a list the ',' is used by default.
+Ensure that you use no whitespaces between values because those would be interpreted
+as the next command-line option. Example for a command-line option
 that can be parsed as a `std::vector<double>`:
 
 ~~~
 --my_list=1,-2.1,3,4.5
 ~~~
+
+To set up custom separation character (semicolon, for example) use:
+
+```cpp
+cxxopts::value<std::vector<std::string>>()->delimiter(';')
+```
 
 ## Value from ENV variable
 
@@ -206,6 +214,21 @@ vector to the `help` function.
 The string after the program name on the first line of the help can be
 completely replaced by calling `options.custom_help`. Note that you might
 also want to override the positional help by calling `options.positional_help`.
+
+## Custom parsers
+
+```cpp
+template <>
+struct cxxopts::value_parser<custom_type> {
+  using value_type = custom_type;
+  /// Is this a container type?
+  static constexpr bool is_container = <true> | <false>;
+
+  void parse(const cxxopts::parse_contex& ctx, const std::string& text, custom_type& value) {
+    // parse value from text here
+  }
+};
+```
 
 # Command / subcommand pattern
 

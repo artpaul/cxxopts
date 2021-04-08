@@ -71,6 +71,9 @@ namespace cxxopts {
 class options;
 class parse_result;
 
+template <typename T>
+struct value_parser;
+
 static constexpr struct {
   uint8_t major, minor, patch;
 } version = {
@@ -173,6 +176,19 @@ void throw_or_mimic(Args&& ... args) {
 
 /**@}*/
 
+
+/**
+* \defgroup Values setup and parsing
+* @{
+*/
+
+/**
+ * Settings for customizing parser behaviour.
+ */
+struct parse_context {
+  char delimiter{CXXOPTS_VECTOR_DELIMITER};
+};
+
 namespace detail {
 
 #if defined(__GNUC__)
@@ -232,6 +248,13 @@ public:
     return shared_from_this();
   }
 
+  /** Sets delimiter for list values. */
+  std::shared_ptr<value_base>
+  delimiter(const char del) {
+    parse_ctx_.delimiter = del;
+    return shared_from_this();
+  }
+
   /** Sets env variable. */
   std::shared_ptr<value_base>
   env(const std::string& var) {
@@ -271,13 +294,13 @@ public:
   /** Parses the given text into the value. */
   void
   parse(const std::string& text) const {
-    return do_parse(text);
+    return do_parse(parse_ctx_, text);
   }
 
   /** Parses the default value. */
   void
   parse() const {
-    return do_parse(default_value_);
+    return do_parse(parse_ctx_, default_value_);
   }
 
 protected:
@@ -288,7 +311,7 @@ protected:
   do_is_container() const noexcept = 0;
 
   virtual void
-  do_parse(const std::string& text) const = 0;
+  do_parse(const parse_context& ctx, const std::string& text) const = 0;
 
   void
   set_default_and_implicit() {
@@ -304,6 +327,7 @@ private:
   std::string default_value_{};
   std::string env_var_{};
   std::string implicit_value_{};
+  parse_context parse_ctx_{};
 
   bool default_{false};
   bool env_{false};
@@ -364,22 +388,6 @@ parse_value(const std::string& text, T& value) {
   stringstream_parser(text, value);
 }
 
-template <typename T>
-void
-parse_value(const std::string& text, std::vector<T>& value) {
-  if (text.empty()) {
-    value.push_back(T());
-    return;
-  }
-  std::stringstream in{text};
-  std::string token;
-  while (!in.eof() && std::getline(in, token, CXXOPTS_VECTOR_DELIMITER)) {
-    T v;
-    parse_value(token, v);
-    value.emplace_back(std::move(v));
-  }
-}
-
 #ifdef CXXOPTS_HAS_OPTIONAL
 template <typename T>
 void
@@ -391,13 +399,8 @@ parse_value(const std::string& text, std::optional<T>& value) {
 #endif
 
 template <typename T>
-struct is_container_type : std::false_type {};
-
-template <typename T>
-struct is_container_type<std::vector<T>> : std::true_type {};
-
-template <typename T>
 class basic_value : public value_base {
+  using parser_type = value_parser<T>;
 public:
   basic_value()
     : result_(new T{})
@@ -425,12 +428,12 @@ protected:
 
   bool
   do_is_container() const noexcept final override {
-    return is_container_type<T>::value;
+    return parser_type::is_container;
   }
 
   void
-  do_parse(const std::string& text) const override {
-    parse_value(text, *store_);
+  do_parse(const parse_context& ctx, const std::string& text) const override {
+    parser_type().parse(ctx, text, *store_);
   }
 
 private:
@@ -443,6 +446,55 @@ private:
 };
 
 } // namespace detail
+
+/**
+ * A parser for values of type T.
+ */
+template <typename T>
+struct value_parser {
+  using value_type = T;
+  /// By default, value can not act as container.
+  static constexpr bool is_container = false;
+
+  void parse(const parse_context&, const std::string& text, T& value) {
+    detail::parse_value(text, value);
+  }
+};
+
+template <typename T>
+struct value_parser<std::vector<T>> {
+  using value_type = T;
+  /// Value of type std::vector<T> can act as container.
+  static constexpr bool is_container = true;
+
+  void parse(
+    const parse_context& ctx,
+    const std::string& text,
+    std::vector<T>& value)
+  {
+    using parser_type = value_parser<T>;
+
+    static_assert(!parser_type::is_container ||
+                  !value_parser<typename parser_type::value_type>::is_container,
+                  "dimensions of a container type should not exceed 2");
+
+    if (text.empty()) {
+      value.push_back(T());
+    } else if (parser_type::is_container) {
+      T v;
+      parser_type().parse(ctx, text, v);
+      value.emplace_back(std::move(v));
+    } else {
+      std::stringstream in{text};
+      std::string token;
+      while (!in.eof() && std::getline(in, token, ctx.delimiter)) {
+        T v;
+        parser_type().parse(ctx, token, v);
+        value.emplace_back(std::move(v));
+      }
+    }
+  }
+};
 
 /**
  * Creates value holder for the specific type.
@@ -461,6 +513,8 @@ std::shared_ptr<detail::basic_value<T>>
 value(T& t) {
   return std::make_shared<detail::basic_value<T>>(&t);
 }
+
+/**@}*/
 
 class option_details {
 public:

@@ -998,3 +998,63 @@ TEST_CASE("Value from ENV variable", "[options]") {
   // env not defined, should fallback to default value
   CHECK(result["empty"].as<int>() == 1);
 }
+
+using char_pair = std::pair<char, char>;
+
+template <>
+struct cxxopts::value_parser<char_pair> {
+  static constexpr bool is_container = false;
+
+  void parse(const parse_context&, const std::string& text, char_pair& value) {
+    if (text.size() != 3) {
+      cxxopts::throw_or_mimic<argument_incorrect_type>(text, "char_pair");
+    }
+    value.first = text[0];
+    value.second = text[2];
+  }
+};
+
+TEST_CASE("Custom parser", "[parser]") {
+  cxxopts::options options("parser", " - test custom parser");
+  options.add_options()
+    ("f,foo", "foo option", cxxopts::value<std::pair<char,char>>());
+
+  const Argv argv({"test", "--foo", "5=4"});
+  const auto result = options.parse(argv.argc(), argv.argv());
+  CHECK(result.count("foo") == 1);
+  CHECK(result["foo"].as<char_pair>().first == '5');
+  CHECK(result["foo"].as<char_pair>().second == '4');
+}
+
+TEST_CASE("Custom delimiter", "[parser]") {
+  cxxopts::options options("parser", " - test vector of vector");
+  options.add_options()
+    ("test", "vector input", cxxopts::value<std::vector<std::string>>()->delimiter(';'));
+
+  const Argv argv({"test", "--test=a;b;c", "--test=x,y,z"});
+  const auto result = options.parse(argv.argc(), argv.argv());
+  const auto tests = result["test"].as<std::vector<std::string>>();
+
+  CHECK(result.count("test") == 2);
+  CHECK(tests.size() == 4);
+  CHECK(tests[0] == "a");
+  CHECK(tests[1] == "b");
+  CHECK(tests[2] == "c");
+  CHECK(tests[3] == "x,y,z");
+}
+
+TEST_CASE("Vector of vector", "[parser]") {
+  cxxopts::options options("parser", " - test vector of vector");
+  options.add_options()
+    ("test", "vector input", cxxopts::value<std::vector<std::vector<float>>>());
+
+  const Argv argv({"test", "--test=10.0", "--test=10.0,10.0", "--test=10.0,10.0,10.0"});
+  const auto result = options.parse(argv.argc(), argv.argv());
+  const auto tests = result["test"].as<std::vector<std::vector<float>>>();
+
+  CHECK(result.count("test") == 3);
+  CHECK(tests.size() == 3);
+  CHECK(tests[0].size() == 1);
+  CHECK(tests[1].size() == 2);
+  CHECK(tests[2].size() == 3);
+}
