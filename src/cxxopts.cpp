@@ -604,23 +604,10 @@ option_value::parse_no_value(
   long_name_ = details->long_name();
 }
 
-#if defined(__GNUC__)
-#if __GNUC__ <= 10 && __GNUC_MINOR__ <= 1
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Werror=null-dereference"
-#endif
-#endif
-
 size_t
 option_value::count() const noexcept {
   return count_;
 }
-
-#if defined(__GNUC__)
-#if __GNUC__ <= 10 && __GNUC_MINOR__ <= 1
-#pragma GCC diagnostic pop
-#endif
-#endif
 
 bool
 option_value::has_default() const noexcept {
@@ -757,7 +744,6 @@ public:
   parse(const int argc, const char* const* argv) {
     int current = 1;
     auto next_positional = positional_.begin();
-    parse_result::name_hash_map keys;
     std::vector<std::string> unmatched;
 
     while (current != argc) {
@@ -880,14 +866,18 @@ public:
       }
     }
 
+    parse_result::name_hash_map keys;
     // Finalize aliases.
-    for (auto& option: options_) {
-      const auto& detail = *option.second;
-      const auto hash = detail.hash();
-      keys[detail.short_name()] = hash;
-      keys[detail.long_name()] = hash;
+    for (const auto& option: options_) {
+      const auto& detail = option.second;
+      const auto hash = detail->hash();
 
-      parsed_.emplace(hash, option_value());
+      if (detail->short_name().size()) {
+        keys[detail->short_name()] = hash;
+      }
+      if (detail->long_name().size()) {
+        keys[detail->long_name()] = hash;
+      }
     }
 
     assert(stop_on_positional_ || argc == current);
