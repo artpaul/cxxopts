@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.com/artpaul/cxxopts.svg?branch=master)](https://travis-ci.com/artpaul/cxxopts)
+[![Build Status](https://github.com/artpaul/cxxopts/actions/workflows/cmake.yml/badge.svg)](https://github.com/artpaul/cxxopts/actions/workflows/cmake.yml)
 
 # About
 
