@@ -1058,3 +1058,50 @@ TEST_CASE("Vector of vector", "[parser]") {
   CHECK(tests[1].size() == 2);
   CHECK(tests[2].size() == 3);
 }
+
+TEST_CASE("Long and short options format", "[options]") {
+  SECTION("Empty") {
+    cxxopts::options options("parser");
+    CHECK_THROWS_AS(options.add_options()("", ""), cxxopts::invalid_option_format_error&);
+  }
+
+  SECTION("Short only") {
+    cxxopts::options options("parser");
+    options.add_options()("f", "");
+  }
+
+  SECTION("Long only") {
+    cxxopts::options options("parser");
+    options.add_options()("flag", "");
+  }
+
+  SECTION("Short and logn") {
+    cxxopts::options options("parser");
+    options.add_options()("f,flag", "");
+  }
+
+  SECTION("Long and short") {
+    cxxopts::options options("parser");
+    CHECK_THROWS_AS(options.add_options()("flag,f", ""), cxxopts::invalid_option_format_error&);
+  }
+
+  SECTION("Short with comma") {
+    cxxopts::options options("parser");
+    options.add_options()("f,", "");
+  }
+
+  SECTION("Comma and long") {
+    cxxopts::options options("parser");
+    CHECK_THROWS_AS(options.add_options()(",flag", ""), cxxopts::invalid_option_format_error&);
+  }
+
+  SECTION("Long and comma") {
+    cxxopts::options options("parser");
+    CHECK_THROWS_AS(options.add_options()("flag,", ""), cxxopts::invalid_option_format_error&);
+  }
+
+  SECTION("Comma only") {
+    cxxopts::options options("parser");
+    CHECK_THROWS_AS(options.add_options()(",", ""), cxxopts::invalid_option_format_error&);
+  }
+}

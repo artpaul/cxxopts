@@ -1465,25 +1465,16 @@ options::option_adder::operator()(
   const auto& short_match = result[2];
   const auto& long_match = result[3];
 
-  if (!short_match.length() && !long_match.length()) {
-    throw_or_mimic<invalid_option_format_error>(opts);
-  } else if (long_match.length() == 1 && short_match.length()) {
+  if ((!short_match.length() && !long_match.length()) ||
+      ( short_match.length() &&  long_match.length() == 1))
+  {
     throw_or_mimic<invalid_option_format_error>(opts);
   }
 
-  auto option_names = [] (
-    const std::sub_match<const char*>& short_,
-    const std::sub_match<const char*>& long_) {
-    if (long_.length() == 1) {
-      return std::make_tuple(long_.str(), short_.str());
-    }
-    return std::make_tuple(short_.str(), long_.str());
-  } (short_match, long_match);
-
   options_.add_option(
     group_,
-    std::get<0>(option_names),
-    std::get<1>(option_names),
+    short_match.str(),
+    long_match.str(),
     desc,
     value,
     std::move(arg_help));
