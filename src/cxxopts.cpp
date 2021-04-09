@@ -227,10 +227,9 @@ static const std::basic_regex<char> option_specifier
 
 static const std::basic_regex<char> integer_pattern
   ("(-)?(0x)?([0-9a-zA-Z]+)|((0x)?0)");
-static const std::basic_regex<char> truthy_pattern
-  ("(t|T)(rue)?|1");
-static const std::basic_regex<char> falsy_pattern
-  ("(f|F)(alse)?|0");
+static const std::basic_regex<char> boolean_pattern
+  ("((t|T)(rue)?|1)|((f|F)(alse)?|0)",
+   std::regex_constants::ECMAScript | std::regex_constants::optimize);
 
 
 option_error::option_error(const std::string& what_arg)
@@ -334,17 +333,9 @@ template <typename T>
 struct signed_check<T, true> {
   template <typename U>
   bool
-  operator()(bool negative, U u) const noexcept {
-    if (negative) {
-      if (u > static_cast<U>(std::numeric_limits<T>::min())) {
-        return false;
-      }
-    } else {
-      if (u > static_cast<U>((std::numeric_limits<T>::max)())) {
-        return false;
-      }
-    }
-    return true;
+  operator()(const U u, const bool negative) const noexcept {
+    return ((static_cast<U>(std::numeric_limits<T>::min()) >= u) && negative) ||
+            (static_cast<U>(std::numeric_limits<T>::max()) >= u);
   }
 };
 
@@ -352,15 +343,15 @@ template <typename T>
 struct signed_check<T, false> {
   template <typename U>
   bool
-  operator()(bool, U) const noexcept {
+  operator()(const U, const bool) const noexcept {
     return true;
   }
 };
 
 template <typename T, typename U>
 bool
-check_signed_range(bool negative, U value) noexcept {
-  return signed_check<T, std::numeric_limits<T>::is_signed>()(negative, value);
+check_signed_range(const U value, const bool negative) noexcept {
+  return signed_check<T, std::numeric_limits<T>::is_signed>()(value, negative);
 }
 
 template <typename R, typename T>
@@ -392,7 +383,7 @@ bool parse_to_uint64(const std::string& text, uint64_t& value, bool& negative) {
   if (match.length(4) > 0) {
     return true;
   }
-  const auto value_match = match[3];
+  const auto& value_match = match[3];
   if (match.length(2) > 0) {
     // Hex number.
     for (auto vi = value_match.first; vi != value_match.second; ++vi) {
@@ -457,7 +448,7 @@ integer_parser(const std::string& text, T& value) {
     result = static_cast<US>(u64_result);
   }
   // Check signed overflow.
-  if (!check_signed_range<T>(negative, result)) {
+  if (!check_signed_range<T>(result, negative)) {
     throw_or_mimic<argument_incorrect_type>(text, "integer");
   }
   // Negate value.
@@ -517,20 +508,16 @@ parse_value(const std::string& text, int64_t& value) {
 void
 parse_value(const std::string& text, bool& value) {
   std::smatch result;
-  std::regex_match(text, result, truthy_pattern);
+  std::regex_match(text, result, boolean_pattern);
 
-  if (!result.empty()) {
-    value = true;
-    return;
+  if (result.empty()) {
+    throw_or_mimic<argument_incorrect_type>(text, "bool");
+  } else {
+    // Value cannot be true and false at the same time.
+    assert(bool(result[1].length()) ^ bool(result[4].length()));
+
+    value = bool(result[1].length());
   }
-
-  std::regex_match(text, result, falsy_pattern);
-  if (!result.empty()) {
-    value = false;
-    return;
-  }
-
-  throw_or_mimic<argument_incorrect_type>(text, "bool");
 }
 
 void parse_value(const std::string& text, char& c) {
