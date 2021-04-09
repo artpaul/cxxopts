@@ -652,7 +652,7 @@ public:
     template <typename T>
     T as() const {
       T result;
-      detail::parse_value(value_, result);
+      value_parser<T>().parse(parse_context(), value_, result);
       return result;
     }
 
