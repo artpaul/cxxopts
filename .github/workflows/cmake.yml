@@ -45,9 +45,9 @@ jobs:
             archiver: "7z a"
           }
         - {
-            name: "Ubuntu latest gcc",
+            name: "Ubuntu latest clang",
             os: ubuntu-latest,
-            artifact: "ubuntu_gcc.7z",
+            artifact: "ubuntu_clang.7z",
             build_type: "Release",
             cc: "clang",
             cxx: "clang++",
