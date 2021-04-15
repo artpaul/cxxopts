@@ -385,7 +385,7 @@ parse_value(const std::string& text, std::string& value);
 
 template <typename T>
 void stringstream_parser(const std::string& text, T& value) {
-  std::stringstream in{text};
+  std::istringstream in{text};
   in >> value;
   if (!in) {
     throw_or_mimic<argument_incorrect_type>(text);
@@ -498,7 +498,7 @@ struct value_parser<std::vector<T>> {
       parser_type().parse(ctx, text, v);
       value.emplace_back(std::move(v));
     } else {
-      std::stringstream in{text};
+      std::istringstream in{text};
       std::string token;
       while (!in.eof() && std::getline(in, token, ctx.delimiter)) {
         T v;
