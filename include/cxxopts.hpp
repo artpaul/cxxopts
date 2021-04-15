@@ -240,11 +240,17 @@ public:
     return implicit_value_;
   }
 
-  /** Sets default value. */
+  /**
+   * Sets default value.
+   *
+   * Templated version is used to avoid implicit conversion 0u or nullptr
+   * to a string, that leads to runtime error.
+   */
+  template <typename T>
   std::shared_ptr<value_base>
-  default_value(const std::string& value) {
+  default_value(T&& value) {
     default_ = true;
-    default_value_ = value;
+    default_value_.assign(std::forward<T>(value));
     return shared_from_this();
   }
 
@@ -256,18 +262,25 @@ public:
   }
 
   /** Sets env variable. */
+  template <typename T>
   std::shared_ptr<value_base>
-  env(const std::string& var) {
+  env(T&& var) {
     env_ = true;
-    env_var_ = var;
+    env_var_.assign(std::forward<T>(var));
     return shared_from_this();
   }
 
-  /** Sets implicit value. */
+  /**
+   * Sets implicit value.
+   *
+   * Templated version is used to avoid implicit conversion 0u or nullptr
+   * to a string, that leads to runtime error.
+   */
+  template <typename T>
   std::shared_ptr<value_base>
-  implicit_value(const std::string& value) {
+  implicit_value(T&& value) {
     implicit_ = true;
-    implicit_value_ = value;
+    implicit_value_.assign(std::forward<T>(value));
     return shared_from_this();
   }
 

@@ -224,7 +224,7 @@ struct cxxopts::value_parser<custom_type> {
   /// Is this a container type?
   static constexpr bool is_container = <true> | <false>;
 
-  void parse(const cxxopts::parse_contex& ctx, const std::string& text, custom_type& value) {
+  void parse(const cxxopts::parse_context& ctx, const std::string& text, custom_type& value) {
     // parse value from text here
   }
 };
