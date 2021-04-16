@@ -62,7 +62,7 @@ THE SOFTWARE.
 # define CXXOPTS_VECTOR_DELIMITER ','
 #endif
 
-#define CXXOPTS__VERSION_MAJOR 4
+#define CXXOPTS__VERSION_MAJOR 5
 #define CXXOPTS__VERSION_MINOR 0
 #define CXXOPTS__VERSION_PATCH 0
 
@@ -240,6 +240,11 @@ public:
     return implicit_value_;
   }
 
+  bool
+  get_no_value() const {
+    return no_value_;
+  }
+
   /**
    * Sets default value.
    *
@@ -287,8 +292,16 @@ public:
   /** Clears implicit value. */
   std::shared_ptr<value_base>
   no_implicit_value() {
+    no_value_ = false;
     implicit_ = false;
     implicit_value_.clear();
+    return shared_from_this();
+  }
+
+  /** Sets no-value field. */
+  std::shared_ptr<value_base>
+  no_value(const bool on = true) {
+    no_value_ = on;
     return shared_from_this();
   }
 
@@ -333,6 +346,7 @@ protected:
       default_value_ = "false";
       implicit_ = true;
       implicit_value_ = "true";
+      no_value_ = true;
     }
   }
 
@@ -353,6 +367,8 @@ private:
   bool env_{false};
   /// The implicit value has been set.
   bool implicit_{false};
+  /// There should be no value for the option.
+  bool no_value_{false};
 };
 #if defined(__GNUC__)
 # pragma GCC diagnostic pop
@@ -522,7 +538,7 @@ struct value_parser<std::vector<T>> {
  */
 template <typename T>
 std::shared_ptr<detail::basic_value<T>>
-value() {
+inline value() {
   return std::make_shared<detail::basic_value<T>>();
 }
 
@@ -531,7 +547,7 @@ value() {
  */
 template <typename T>
 std::shared_ptr<detail::basic_value<T>>
-value(T& t) {
+inline value(T& t) {
   return std::make_shared<detail::basic_value<T>>(&t);
 }
 

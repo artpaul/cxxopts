@@ -921,14 +921,11 @@ private:
     return false;
   }
 
-  void check_value_not_option(
-    const std::string& name,
-    const char* const arg) const
-  {
-      // Do not allow silently consume dash-dash as a value
-      // because it can be a positional separator.
+  bool is_dash_dash_or_option_name(const char* const arg) const {
+      // The dash-dash symbol has a special meaning and cannot
+      // be interpreted as an option value.
       if (strcmp(arg, "--") == 0) {
-        throw_or_mimic<missing_argument_error>(name);
+        return true;
       }
 
       std::cmatch result;
@@ -937,21 +934,21 @@ private:
       // The argument does not match an option format
       // so that it can be safely consumed as a value.
       if (result.empty()) {
-        return;
+        return false;
       }
 
       auto check_name = [&] (const std::string& opt) {
-        if (options_.find(opt) != options_.end()) {
-          throw_or_mimic<missing_argument_error>(name);
-        }
+        return options_.find(opt) != options_.end();
       };
       // Check that the argument does not match any
       // existing option.
       if (result[4].length()) {
-        check_name(result[4].str().substr(0, 1));
+        return check_name(result[4].str().substr(0, 1));
       } else if (result[1].length()) {
-        check_name(result[1]);
+        return check_name(result[1]);
       }
+
+      return false;
   }
 
   void
@@ -962,18 +959,28 @@ private:
     const std::shared_ptr<option_details>& value,
     const std::string& name)
   {
-    if (value->value()->has_implicit()) {
-      parse_option(value, name, value->value()->get_implicit_value());
-    } else if (current < argc - 1) {
+    auto parse_implicit = [&] () {
+      if (value->value()->has_implicit()) {
+        parse_option(value, name, value->value()->get_implicit_value());
+      } else {
+        throw_or_mimic<missing_argument_error>(name);
+      }
+    };
+
+    if (current + 1 == argc || value->value()->get_no_value()) {
+      // Last argument.
+      parse_implicit();
+    } else {
+      const char* const arg = argv[current + 1];
       // Check that we do not silently consume any option as a value
       // of another option.
-      if (argv[current + 1][0] == '-') {
-        check_value_not_option(name, argv[current + 1]);
+      if (arg[0] == '-' && is_dash_dash_or_option_name(arg)) {
+        parse_implicit();
+      } else {
+        // Parse argument as a value for the option.
+        parse_option(value, name, arg);
+        ++current;
       }
-      parse_option(value, name, argv[current + 1]);
-      ++current;
-    } else {
-      throw_or_mimic<missing_argument_error>(name);
     }
   }
 

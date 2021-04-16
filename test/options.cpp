@@ -365,80 +365,147 @@ TEST_CASE("Positional with empty arguments", "[positional]") {
   REQUIRE(actual == expected);
 }
 
-TEST_CASE("Empty with implicit value", "[implicit]")
-{
+TEST_CASE("Positional after flag", "[positional]") {
+  cxxopts::options options("test", "positional after flag");
+  options.add_options()
+    ("f,flag", "boolean flag", cxxopts::value<bool>())
+    ("param", "name of smth", cxxopts::value<std::string>());
+  options.parse_positional("param");
+
+  const Argv args({"test", "-f", "name"});
+  const auto result = options.parse(args.argc(), args.argv());
+
+  CHECK(result.has("flag"));
+  CHECK(result.has("param"));
+  CHECK(result["param"].as<std::string>() == "name");
+}
+
+TEST_CASE("Empty with implicit value", "[implicit]") {
   cxxopts::options options("empty_implicit", "doesn't handle empty");
   options.add_options()
     ("implicit", "Has implicit", cxxopts::value<std::string>()
       ->implicit_value("foo"));
 
-  Argv av({"implicit", "--implicit="});
+  SECTION("Assign empty") {
+    const Argv av({"implicit", "--implicit="});
+    const auto result = options.parse(av.argc(), av.argv());
 
-  auto** argv = av.argv();
-  auto argc = av.argc();
+    REQUIRE(result.count("implicit") == 1);
+    REQUIRE(result["implicit"].as<std::string>() == "");
+  }
 
-  auto result = options.parse(argc, argv);
+  SECTION("Empty argument") {
+    const Argv av({"implicit", "--implicit", ""});
+    const auto result = options.parse(av.argc(), av.argv());
 
-  REQUIRE(result.count("implicit") == 1);
-  REQUIRE(result["implicit"].as<std::string>() == "");
+    REQUIRE(result.count("implicit") == 1);
+    REQUIRE(result["implicit"].as<std::string>() == "");
+  }
 }
 
-TEST_CASE("Boolean without implicit value", "[implicit]")
-{
+TEST_CASE("Option with implicit value", "[implicit]") {
+  cxxopts::options options("implicit", "implicit value");
+  options.add_options()
+    ("o,output", "path", cxxopts::value<std::string>()->implicit_value("a.out"))
+    ("f,flag", "flag");
+
+  SECTION("No value") {
+    const Argv av({"implicit", "--output"});
+    const auto result = options.parse(av.argc(), av.argv());
+
+    REQUIRE(result.has("output"));
+    REQUIRE(result["output"].as<std::string>() == "a.out");
+  }
+
+  SECTION("Implicit option plus another option") {
+    const Argv av({"implicit", "--output", "--flag"});
+    const auto result = options.parse(av.argc(), av.argv());
+
+    REQUIRE(result.has("output"));
+    REQUIRE(result["output"].as<std::string>() == "a.out");
+  }
+
+  SECTION("Implicit option with dash-dash") {
+    const Argv av({"implicit", "--output", "--", "tmp"});
+    const auto result = options.parse(av.argc(), av.argv());
+
+    REQUIRE(result.has("output"));
+    REQUIRE(result["output"].as<std::string>() == "a.out");
+  }
+
+  SECTION("Value in next argument (short option)") {
+    const Argv av({"implicit", "-o", "test"});
+    const auto result = options.parse(av.argc(), av.argv());
+
+    REQUIRE(result.has("output"));
+    REQUIRE(result["output"].as<std::string>() == "test");
+  }
+
+  SECTION("Value in next argument (long option)") {
+    const Argv av({"implicit", "--output", "test"});
+    const auto result = options.parse(av.argc(), av.argv());
+
+    REQUIRE(result.has("output"));
+    REQUIRE(result["output"].as<std::string>() == "test");
+  }
+
+  SECTION("Option with assign") {
+    const Argv av({"implicit", "--output=test"});
+    const auto result = options.parse(av.argc(), av.argv());
+
+    REQUIRE(result.has("output"));
+    REQUIRE(result["output"].as<std::string>() == "test");
+  }
+
+  SECTION("Option and option-like argument") {
+    const Argv av({"implicit", "--output", "--test"});
+    const auto result = options.parse(av.argc(), av.argv());
+
+    REQUIRE(result.has("output"));
+    REQUIRE(result["output"].as<std::string>() == "--test");
+  }
+}
+
+TEST_CASE("Boolean without implicit value", "[implicit]") {
   cxxopts::options options("no_implicit", "bool without an implicit value");
   options.add_options()
     ("bool", "Boolean without implicit", cxxopts::value<bool>()
       ->no_implicit_value());
 
   SECTION("When no value provided") {
-    Argv av({"no_implicit", "--bool"});
+    const Argv av({"no_implicit", "--bool"});
 
-    auto** argv = av.argv();
-    auto argc = av.argc();
-
-    CHECK_THROWS_AS(options.parse(argc, argv), cxxopts::missing_argument_error&);
+    CHECK_THROWS_AS(options.parse(av.argc(), av.argv()), cxxopts::missing_argument_error&);
   }
 
   SECTION("With equal-separated true") {
-    Argv av({"no_implicit", "--bool=true"});
+    const Argv av({"no_implicit", "--bool=true"});
+    const auto result = options.parse(av.argc(), av.argv());
 
-    auto** argv = av.argv();
-    auto argc = av.argc();
-
-    auto result = options.parse(argc, argv);
     CHECK(result.count("bool") == 1);
     CHECK(result["bool"].as<bool>() == true);
   }
 
   SECTION("With equal-separated false") {
-    Argv av({"no_implicit", "--bool=false"});
+    const Argv av({"no_implicit", "--bool=false"});
+    const auto result = options.parse(av.argc(), av.argv());
 
-    auto** argv = av.argv();
-    auto argc = av.argc();
-
-    auto result = options.parse(argc, argv);
     CHECK(result.count("bool") == 1);
     CHECK(result["bool"].as<bool>() == false);
   }
 
   SECTION("With space-separated true") {
-    Argv av({"no_implicit", "--bool", "true"});
+    const Argv av({"no_implicit", "--bool", "true"});
+    const auto result = options.parse(av.argc(), av.argv());
 
-    auto** argv = av.argv();
-    auto argc = av.argc();
-
-    auto result = options.parse(argc, argv);
     CHECK(result.count("bool") == 1);
     CHECK(result["bool"].as<bool>() == true);
   }
 
   SECTION("With space-separated false") {
-    Argv av({"no_implicit", "--bool", "false"});
+    const Argv av({"no_implicit", "--bool", "false"});
+    const auto result = options.parse(av.argc(), av.argv());
 
-    auto** argv = av.argv();
-    auto argc = av.argc();
-
-    auto result = options.parse(argc, argv);
     CHECK(result.count("bool") == 1);
     CHECK(result["bool"].as<bool>() == false);
   }
