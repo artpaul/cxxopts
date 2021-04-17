@@ -337,13 +337,21 @@ protected:
   }
 
 private:
+  /// A default value for the option.
   std::string default_value_{};
+  /// A name of an environment variable from which a default
+  /// value will be read.
   std::string env_var_{};
+  /// An implicit value for the option.
   std::string implicit_value_{};
+  /// Configuration of the value parser.
   parse_context parse_ctx_{};
 
+  /// The default value has been set.
   bool default_{false};
+  /// The environment variable has been set.
   bool env_{false};
+  /// The implicit value has been set.
   bool implicit_{false};
 };
 #if defined(__GNUC__)
@@ -768,7 +776,6 @@ public:
 
   struct help_group_details {
     std::string name{};
-    std::string description{};
     std::vector<help_option_details> options{};
   };
 
@@ -792,33 +799,6 @@ public:
 public:
   explicit options(std::string program, std::string help_string = {});
 
-  options&
-  positional_help(std::string help_text);
-
-  options&
-  custom_help(std::string help_text);
-
-  options&
-  show_positional_help();
-
-  options&
-  allow_unrecognised_options();
-
-  options&
-  set_tab_expansion(bool expansion = true);
-
-  options&
-  set_width(size_t width);
-
-  /**
-   * Stop parsing at first positional argument.
-   */
-  options&
-  stop_on_positional();
-
-  option_adder
-  add_options(std::string group = {});
-
   /**
    * Adds list of options to the specific group.
    */
@@ -834,6 +814,15 @@ public:
   add_option(
     const std::string& group,
     const option& option);
+
+  option_adder
+  add_options(std::string group = {});
+
+  options&
+  allow_unrecognised_options(const bool value = true);
+
+  options&
+  custom_help(std::string help_text);
 
   template <typename ... Args>
   void
@@ -853,6 +842,34 @@ public:
   void
   parse_positional(std::vector<std::string> options);
 
+  options&
+  positional_help(std::string help_text);
+
+  options&
+  set_tab_expansion(bool expansion = true);
+
+  options&
+  set_width(size_t width);
+
+  options&
+  show_positional_help(const bool value = true);
+
+  /**
+   * Stop parsing at first positional argument.
+   */
+  options&
+  stop_on_positional(const bool value = true);
+
+public:
+  /**
+   * Parses the command line arguments according to the current specification.
+   */
+  parse_result
+  parse(int argc, const char* const* argv) const;
+
+  /**
+   * Generates help for the options.
+   */
   std::string
   help(const std::vector<std::string>& groups = {}) const;
 
@@ -865,19 +882,12 @@ public:
   const help_group_details&
   group_help(const std::string& group) const;
 
-public:
-  /**
-   * Parses the command line arguments according to the current specification.
-   */
-  parse_result
-  parse(int argc, const char* const* argv) const;
-
 private:
   void
   add_option(
     const std::string& group,
-    const std::string& s,
-    const std::string& l,
+    std::string s,
+    std::string l,
     std::string desc,
     const std::shared_ptr<detail::value_base>& value,
     std::string arg_help);
