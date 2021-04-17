@@ -223,7 +223,7 @@ static const std::basic_regex<char> option_matcher
   ("--([[:alnum:]][-_[:alnum:]]+)(=(.*))?|-(\\?|[[:alnum:]]+)");
 
 static const std::basic_regex<char> option_specifier
-  ("((\\?|[[:alnum:]]),)?[ ]*([[:alnum:]][-_[:alnum:]]*)?");
+  ("((\\?|[[:alnum:]]),)?[ ]*(\\?|([[:alnum:]][-_[:alnum:]]*))?");
 
 static const std::basic_regex<char> integer_pattern
   ("(-)?(0x)?([0-9a-zA-Z]+)|((0x)?0)");
@@ -797,6 +797,7 @@ public:
 
             if (oi == options_.end()) {
               if (allow_unrecognised_) {
+                // TODO: keep unrecognized.
                 continue;
               }
               // Error.
@@ -1015,8 +1016,8 @@ options::options(std::string program, std::string help_string)
 }
 
 options&
-options::positional_help(std::string help_text) {
-  positional_help_ = std::move(help_text);
+options::allow_unrecognised_options(const bool value) {
+  allow_unrecognised_ = value;
   return *this;
 }
 
@@ -1027,20 +1028,14 @@ options::custom_help(std::string help_text) {
 }
 
 options&
-options::show_positional_help() {
-  show_positional_ = true;
+options::positional_help(std::string help_text) {
+  positional_help_ = std::move(help_text);
   return *this;
 }
 
 options&
-options::allow_unrecognised_options() {
-  allow_unrecognised_ = true;
-  return *this;
-}
-
-options&
-options::set_width(size_t width) {
-  width_ = width;
+options::show_positional_help(const bool value) {
+  show_positional_ = value;
   return *this;
 }
 
@@ -1051,8 +1046,14 @@ options::set_tab_expansion(bool expansion) {
 }
 
 options&
-options::stop_on_positional() {
-  stop_on_positional_ = true;
+options::set_width(size_t width) {
+  width_ = width;
+  return *this;
+}
+
+options&
+options::stop_on_positional(const bool value) {
+  stop_on_positional_ = value;
   return *this;
 }
 
@@ -1090,8 +1091,8 @@ options::add_option(const std::string& group, const option& opt) {
 void
 options::add_option(
   const std::string& group,
-  const std::string& s,
-  const std::string& l,
+  std::string s,
+  std::string l,
   std::string desc,
   const std::shared_ptr<detail::value_base>& value,
   std::string arg_help)
@@ -1292,8 +1293,7 @@ options::help_one_group(const std::string& g) const {
   }
 
   for (const auto& o : group->second.options) {
-    if (positional_set_.find(o.l) != positional_set_.end() &&
-        !show_positional_)
+    if (!show_positional_ && positional_set_.find(o.l) != positional_set_.end())
     {
       continue;
     }
@@ -1312,8 +1312,7 @@ options::help_one_group(const std::string& g) const {
 
   auto fiter = format.begin();
   for (const auto& o : group->second.options) {
-    if (positional_set_.find(o.l) != positional_set_.end() &&
-        !show_positional_)
+    if (!show_positional_ && positional_set_.find(o.l) != positional_set_.end())
     {
       continue;
     }
@@ -1439,9 +1438,12 @@ options::option_adder::operator()(
     throw_or_mimic<invalid_option_format_error>(opts);
   }
 
-  const auto& short_match = result[2];
-  const auto& long_match = result[3];
+  std::string short_match = result[2].str();
+  std::string long_match = result[3].str();
 
+  if (short_match.empty() && long_match.length() == 1) {
+    std::swap(short_match, long_match);
+  }
   if ((!short_match.length() && !long_match.length()) ||
       ( short_match.length() &&  long_match.length() == 1))
   {
@@ -1450,8 +1452,8 @@ options::option_adder::operator()(
 
   options_.add_option(
     group_,
-    short_match.str(),
-    long_match.str(),
+    std::move(short_match),
+    std::move(long_match),
     desc,
     value,
     std::move(arg_help));
