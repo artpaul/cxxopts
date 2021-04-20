@@ -710,19 +710,6 @@ parse_result::unmatched() const {
 }
 
 
-option::option(
-    std::string opts,
-    std::string desc,
-    std::shared_ptr<detail::value_base> value,
-    std::string arg_help
-  )
-  : opts_(std::move(opts))
-  , desc_(std::move(desc))
-  , value_(std::move(value))
-  , arg_help_(std::move(arg_help))
-{
-}
-
 class options::option_parser {
   using positional_list_iterator = positional_list::const_iterator;
 
@@ -968,7 +955,7 @@ private:
     };
 
     if (current + 1 == argc || value->value()->get_no_value()) {
-      // Last argument.
+      // Last argument or the option without value.
       parse_implicit();
     } else {
       const char* const arg = argv[current + 1];

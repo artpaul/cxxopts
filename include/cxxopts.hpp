@@ -46,16 +46,16 @@ THE SOFTWARE.
 # include <unicode/unistr.h>
 #endif
 
-#if __cplusplus >= 201603L
-# define CXXOPTS_NODISCARD [[nodiscard]]
-#else
-# define CXXOPTS_NODISCARD
-#endif
-
 #if __cplusplus >= 200809L
 # define CXXOPTS_NORETURN [[noreturn]]
 #else
 # define CXXOPTS_NORETURN
+#endif
+
+#if __cplusplus >= 201603L
+# define CXXOPTS_NODISCARD [[nodiscard]]
+#else
+# define CXXOPTS_NODISCARD
 #endif
 
 #ifndef CXXOPTS_VECTOR_DELIMITER
@@ -191,6 +191,63 @@ struct parse_context {
 
 namespace detail {
 
+void
+parse_value(const std::string& text, uint8_t& value);
+
+void
+parse_value(const std::string& text, int8_t& value);
+
+void
+parse_value(const std::string& text, uint16_t& value);
+
+void
+parse_value(const std::string& text, int16_t& value);
+
+void
+parse_value(const std::string& text, uint32_t& value);
+
+void
+parse_value(const std::string& text, int32_t& value);
+
+void
+parse_value(const std::string& text, uint64_t& value);
+
+void
+parse_value(const std::string& text, int64_t& value);
+
+void
+parse_value(const std::string& text, bool& value);
+
+void
+parse_value(const std::string& text, char& c);
+
+void
+parse_value(const std::string& text, std::string& value);
+
+// The fallback parser. It uses the stringstream parser to parse all types
+// that have not been overloaded explicitly.  It has to be placed in the
+// source code before all other more specialized templates.
+template <typename T>
+void
+parse_value(const std::string& text, T& value) {
+  std::istringstream in{text};
+  in >> value;
+  if (!in) {
+    throw_or_mimic<argument_incorrect_type>(text);
+  }
+}
+
+#ifdef CXXOPTS_HAS_OPTIONAL
+template <typename T>
+void
+parse_value(const std::string& text, std::optional<T>& value) {
+  T result;
+  parse_value(text, result);
+  value = std::move(result);
+}
+#endif
+
+
 #if defined(__GNUC__)
 // GNU GCC with -Weffc++ will issue a warning regarding the upcoming class, we want to silence it:
 // warning: base class 'class std::enable_shared_from_this<cxxopts::value_base>' has accessible non-virtual destructor
@@ -241,7 +298,7 @@ public:
   }
 
   bool
-  get_no_value() const {
+  get_no_value() const noexcept {
     return no_value_;
   }
 
@@ -374,67 +431,6 @@ private:
 # pragma GCC diagnostic pop
 #endif
 
-void
-parse_value(const std::string& text, uint8_t& value);
-
-void
-parse_value(const std::string& text, int8_t& value);
-
-void
-parse_value(const std::string& text, uint16_t& value);
-
-void
-parse_value(const std::string& text, int16_t& value);
-
-void
-parse_value(const std::string& text, uint32_t& value);
-
-void
-parse_value(const std::string& text, int32_t& value);
-
-void
-parse_value(const std::string& text, uint64_t& value);
-
-void
-parse_value(const std::string& text, int64_t& value);
-
-void
-parse_value(const std::string& text, bool& value);
-
-void
-parse_value(const std::string& text, char& c);
-
-void
-parse_value(const std::string& text, std::string& value);
-
-template <typename T>
-void stringstream_parser(const std::string& text, T& value) {
-  std::istringstream in{text};
-  in >> value;
-  if (!in) {
-    throw_or_mimic<argument_incorrect_type>(text);
-  }
-}
-
-// The fallback parser. It uses the stringstream parser to parse all types
-// that have not been overloaded explicitly.  It has to be placed in the
-// source code before all other more specialized templates.
-template <typename T>
-void
-parse_value(const std::string& text, T& value) {
-  stringstream_parser(text, value);
-}
-
-#ifdef CXXOPTS_HAS_OPTIONAL
-template <typename T>
-void
-parse_value(const std::string& text, std::optional<T>& value) {
-  T result;
-  parse_value(text, result);
-  value = std::move(result);
-}
-#endif
-
 template <typename T>
 class basic_value : public value_base {
   using parser_type = value_parser<T>;
@@ -490,7 +486,7 @@ private:
 template <typename T>
 struct value_parser {
   using value_type = T;
-  /// By default, value can not act as container.
+  /// By default, value cannot act as a container.
   static constexpr bool is_container = false;
 
   void parse(const parse_context&, const std::string& text, T& value) {
@@ -703,11 +699,11 @@ public:
   parse_result(const parse_result&) = default;
   parse_result(parse_result&&) = default;
   parse_result(
-      name_hash_map&& keys,
-      parsed_hash_map&& values,
-      std::vector<key_value>&& sequential,
-      std::vector<std::string>&& unmatched_args,
-      size_t consumed);
+    name_hash_map&& keys,
+    parsed_hash_map&& values,
+    std::vector<key_value>&& sequential,
+    std::vector<std::string>&& unmatched_args,
+    size_t consumed);
 
   parse_result& operator=(const parse_result&) = default;
   parse_result& operator=(parse_result&&) = default;
@@ -759,7 +755,14 @@ public:
     std::string opts,
     std::string desc,
     std::shared_ptr<detail::value_base> value = ::cxxopts::value<bool>(),
-    std::string arg_help = {});
+    std::string arg_help = {}
+  ) noexcept
+    : opts_(std::move(opts))
+    , desc_(std::move(desc))
+    , value_(std::move(value))
+    , arg_help_(std::move(arg_help))
+  {
+  }
 
 private:
   friend class ::cxxopts::options;
