@@ -42,6 +42,13 @@ private:
   std::vector<std::unique_ptr<char[]>> args_{};
 };
 
+template <typename T>
+bool validate_value_parser(const std::string& text, T&& expected) {
+  T value;
+  cxxopts::detail::parse_value(text, value);
+  return value == expected;
+}
+
 } // namespace
 
 
@@ -102,6 +109,23 @@ TEST_CASE("Booleans", "[boolean]") {
   REQUIRE(result.count("others") == 1);
 }
 
+TEST_CASE("Parse ingeger", "[integer]") {
+  CHECK(validate_value_parser<int8_t>("-1", -1));
+  CHECK(validate_value_parser<int8_t>("+1", +1));
+}
+
+TEST_CASE("Parse invalid ingeger", "[integer]") {
+  using namespace cxxopts::detail;
+
+  int8_t si;
+
+  CHECK_THROWS_AS((parse_value("", si)), cxxopts::argument_incorrect_type&);
+  CHECK_THROWS_AS((parse_value("-", si)), cxxopts::argument_incorrect_type&);
+  CHECK_THROWS_AS((parse_value("+", si)), cxxopts::argument_incorrect_type&);
+  CHECK_THROWS_AS((parse_value("-0x", si)), cxxopts::argument_incorrect_type&);
+  CHECK_THROWS_AS((parse_value("+0x", si)), cxxopts::argument_incorrect_type&);
+  CHECK_THROWS_AS((parse_value("0x", si)), cxxopts::argument_incorrect_type&);
+}
 
 TEST_CASE("Overflow on boundary", "[integer]") {
   using namespace cxxopts::detail;

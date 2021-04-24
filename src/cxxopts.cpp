@@ -25,9 +25,10 @@ THE SOFTWARE.
 
 #include "cxxopts.hpp"
 
+#include <algorithm>
 #include <cassert>
 #include <cstdlib>
-#include <regex>
+#include <string.h>
 
 //when we ask cxxopts to use Unicode, help strings are processed using ICU,
 //which results in the correct lengths being computed for strings when they
@@ -219,18 +220,58 @@ namespace cxxopts {
 static constexpr size_t OPTION_LONGEST = 30;
 static constexpr size_t OPTION_DESC_GAP = 2;
 
-static const std::basic_regex<char> option_matcher
-  ("--([[:alnum:]][-_[:alnum:]]+)(=(.*))?|-(\\?|[[:alnum:]]+)");
-
-static const std::basic_regex<char> option_specifier
-  ("((\\?|[[:alnum:]]),)?[ ]*(\\?|([[:alnum:]][-_[:alnum:]]*))?");
-
-static const std::basic_regex<char> integer_pattern
-  ("(-)?(0x)?([0-9a-zA-Z]+)|((0x)?0)");
-static const std::basic_regex<char> boolean_pattern
-  ("((t|T)(rue)?|1)|((f|F)(alse)?|0)",
-   std::regex_constants::ECMAScript | std::regex_constants::optimize);
-
+static bool parse_option_specifier(
+  const std::string& text,
+  std::string& s,
+  std::string& l)
+{
+  const char* p = text.c_str();
+  if (*p == 0) {
+    return false;
+  } else {
+    s.clear();
+    l.clear();
+  }
+  // Short option.
+  if (*(p + 1) == 0 || *(p + 1) == ',') {
+    if (*p == '?' || isalnum(*p)) {
+      s = *p;
+      ++p;
+    } else {
+      return false;
+    }
+  }
+  // Skip comma.
+  if (*p == ',') {
+    if (s.empty()) {
+      return false;
+    }
+    ++p;
+  }
+  // Skip spaces.
+  while (*p && *p == ' ') {
+    ++p;
+  }
+  // Valid specifier without long option.
+  if (*p == 0) {
+    return true;
+  } else {
+    l.reserve((text.c_str() + text.size()) - p);
+  }
+  // First char of an option name should be alnum.
+  if (isalnum(*p)) {
+    l += *p;
+    ++p;
+  }
+  for (; *p; ++p) {
+    if (*p == '-' || *p == '_' || isalnum(*p)) {
+      l += *p;
+    } else {
+      return false;
+    }
+  }
+  return l.size() > 1;
+}
 
 option_error::option_error(const std::string& what_arg)
   : std::runtime_error(what_arg)
@@ -370,54 +411,64 @@ checked_negate(R&, T&&, std::false_type) noexcept {
   return false;
 }
 
-bool parse_to_uint64(const std::string& text, uint64_t& value, bool& negative) {
-  std::smatch match;
-  std::regex_match(text, match, integer_pattern);
-  // Not an integer value.
-  if (match.length() == 0) {
+bool
+parse_uint64(const std::string& text, uint64_t& value, bool& negative) noexcept {
+  const char* p = text.c_str();
+  // String should not be empty.
+  if (*p == 0) {
     return false;
   }
-  value = 0;
-  negative = match.length(1) > 0;
-  // Zero.
-  if (match.length(4) > 0) {
-    return true;
+  // Parse sign.
+  if (*p == '+') {
+    ++p;
+  } else if (*p == '-') {
+    negative = true;
+    ++p;
   }
-  const auto& value_match = match[3];
-  if (match.length(2) > 0) {
-    // Hex number.
-    for (auto vi = value_match.first; vi != value_match.second; ++vi) {
+  // Not an integer value.
+  if (*p == 0) {
+    return false;
+  } else {
+    value = 0;
+  }
+  // Hex number.
+  if (*p == '0' && *(p + 1) == 'x') {
+    p += 2;
+    if (*p == 0) {
+      return false;
+    }
+    for (; *p; ++p) {
       uint64_t digit = 0;
 
-      if (*vi >= '0' && *vi <= '9') {
-        digit = static_cast<uint64_t>(*vi - '0');
-      } else if (*vi >= 'a' && *vi <= 'f') {
-        digit = static_cast<uint64_t>(*vi - 'a' + 10);
-      } else if (*vi >= 'A' && *vi <= 'F') {
-        digit = static_cast<uint64_t>(*vi - 'A' + 10);
+      if (*p >= '0' && *p <= '9') {
+        digit = static_cast<uint64_t>(*p - '0');
+      } else if (*p >= 'a' && *p <= 'f') {
+        digit = static_cast<uint64_t>(*p - 'a' + 10);
+      } else if (*p >= 'A' && *p <= 'F') {
+        digit = static_cast<uint64_t>(*p - 'A' + 10);
       } else {
         return false;
       }
 
-      const uint64_t next = value * 16 + digit;
+      const uint64_t next = value * 16u + digit;
       if (value > next) {
         return false;
       } else {
         value = next;
       }
     }
+  // Decimal number.
   } else {
-    // Decimal number.
-    for (auto vi = value_match.first; vi != value_match.second; ++vi) {
+    for (; *p; ++p) {
       uint64_t digit = 0;
 
-      if (*vi >= '0' && *vi <= '9') {
-        digit = static_cast<uint64_t>(*vi - '0');
+      if (*p >= '0' && *p <= '9') {
+        digit = static_cast<uint64_t>(*p - '0');
       } else {
         return false;
       }
 
-      const uint64_t next = value * 10 + digit;
+      const uint64_t next = value * 10u + digit;
       if (value > next) {
         return false;
       } else {
@@ -438,7 +489,7 @@ integer_parser(const std::string& text, T& value) {
   bool negative{false};
 
   // Parse text to the uint64_t value.
-  if (!parse_to_uint64(text, u64_result, negative)) {
+  if (!parse_uint64(text, u64_result, negative)) {
     throw_or_mimic<argument_incorrect_type>(text, "integer");
   }
   // Check unsigned overflow.
@@ -507,17 +558,37 @@ parse_value(const std::string& text, int64_t& value) {
 
 void
 parse_value(const std::string& text, bool& value) {
-  std::smatch result;
-  std::regex_match(text, result, boolean_pattern);
-
-  if (result.empty()) {
-    throw_or_mimic<argument_incorrect_type>(text, "bool");
-  } else {
-    // Value cannot be true and false at the same time.
-    assert(bool(result[1].length()) ^ bool(result[4].length()));
-
-    value = bool(result[1].length());
+  switch (text.size()) {
+  case 1: {
+    const char ch = text[0];
+    if (ch == '1' || ch == 't' || ch == 'T') {
+      value = true;
+      return;
+    }
+    if (ch == '0' || ch == 'f' || ch == 'F') {
+      value = false;
+      return;
+    }
+    break;
   }
+  case 4:
+    if ((text[0] == 't' || text[0] == 'T') &&
+        (text[1] == 'r' && text[2] == 'u' && text[3] == 'e'))
+    {
+      value = true;
+      return;
+    }
+    break;
+  case 5:
+    if ((text[0] == 'f' || text[0] == 'F') &&
+        (text[1] == 'a' && text[2] == 'l' && text[3] == 's' && text[4] == 'e'))
+    {
+      value = false;
+      return;
+    }
+    break;
+  }
+  throw_or_mimic<argument_incorrect_type>(text, "bool");
 }
 
 void parse_value(const std::string& text, char& c) {
@@ -713,6 +784,13 @@ parse_result::unmatched() const {
 class options::option_parser {
   using positional_list_iterator = positional_list::const_iterator;
 
+  struct option_data {
+    std::string name{};
+    std::string value{};
+    bool is_long{false};
+    bool has_value{false};
+  };
+
 public:
   option_parser(
       const option_map& options,
@@ -753,10 +831,9 @@ public:
         break;
       }
 
-      std::cmatch result;
-      std::regex_match(argv[current], result, option_matcher);
+      option_data result;
 
-      if (result.empty()) {
+      if (!parse_argument(argv[current], result)) {
         // Not a flag.
         // But if it starts with a `-`, then it's an error.
         if (argv[current][0] == '-' && argv[current][1] != '\0') {
@@ -775,8 +852,8 @@ public:
         // If we return from here then it was parsed successfully, so continue.
       } else {
         // Short or long option?
-        if (result[4].length() != 0) {
-          const std::string& seq = result[4];
+        if (result.is_long == false) {
+          const std::string& seq = result.name;
           // Iterate over the sequence of short options.
           for (std::size_t i = 0; i != seq.size(); ++i) {
             const std::string name(1, seq[i]);
@@ -802,8 +879,8 @@ public:
               break;
             }
           }
-        } else if (result[1].length() != 0) {
-          const std::string& name = result[1];
+        } else {
+          const std::string& name = result.name;
           const auto oi = options_.find(name);
 
           if (oi == options_.end()) {
@@ -820,9 +897,9 @@ public:
 
           const auto& opt = oi->second;
           // Equal sign provided for the long option?
-          if (result[2].length() != 0) {
+          if (result.has_value) {
             // Parse the option given.
-            parse_option(opt, name, result[3]);
+            parse_option(opt, name, result.value);
           } else {
             // Parse the next argument.
             checked_parse_arg(argc, argv, current, opt, name);
@@ -915,12 +992,10 @@ private:
         return true;
       }
 
-      std::cmatch result;
-      std::regex_match(arg, result, option_matcher);
-
+      option_data result;
       // The argument does not match an option format
       // so that it can be safely consumed as a value.
-      if (result.empty()) {
+      if (!parse_argument(arg, result)) {
         return false;
       }
 
@@ -929,10 +1004,10 @@ private:
       };
       // Check that the argument does not match any
       // existing option.
-      if (result[4].length()) {
-        return check_name(result[4].str().substr(0, 1));
-      } else if (result[1].length()) {
-        return check_name(result[1]);
+      if (result.is_long) {
+        return check_name(result.name);
+      } else {
+        return check_name(result.name.substr(0, 1));
       }
 
       return false;
@@ -969,6 +1044,61 @@ private:
         ++current;
       }
     }
+  }
+
+  bool parse_argument(const std::string& text, option_data& data) const {
+    const char* p = text.c_str();
+    // String should not be empty and should starts with '-'.
+    if (*p == 0 || *p != '-') {
+      return false;
+    } else {
+      ++p;
+    }
+    // Long option starts with '--'.
+    if (*p == '-') {
+      ++p;
+      if (isalnum(*p) && *(p + 1) != 0) {
+        data.is_long = true;
+        data.name += *p;
+        ++p;
+      } else {
+        return false;
+      }
+      for (; *p; ++p) {
+        if (*p == '=') {
+          ++p;
+          data.has_value = true;
+          data.value.assign(p, text.c_str() + text.size());
+          break;
+        }
+        if (*p == '-' || *p == '_' || isalnum(*p)) {
+          data.name += *p;
+        } else {
+          return false;
+        }
+      }
+      return data.name.size() > 1;
+    // Short option.
+    } else {
+      // Single char short option.
+      if (*(p + 1) == 0) {
+        if (*p == '?' || isalnum(*p)) {
+          data.name = *p;
+          return true;
+        }
+        return false;
+      }
+      // Multiple short options.
+      for (; *p; ++p) {
+        if (isalnum(*p)) {
+          data.name += *p;
+        } else {
+          return false;
+        }
+      }
+      return true;
+    }
+    return false;
   }
 
   void
@@ -1425,33 +1555,22 @@ options::option_adder::operator()(
   const std::shared_ptr<detail::value_base>& value,
   std::string arg_help)
 {
-  std::match_results<const char*> result;
-  std::regex_match(opts.c_str(), result, option_specifier);
+  std::string s;
+  std::string l;
+  if (parse_option_specifier(opts, s, l)) {
+    assert(s.empty() || s.size() == 1);
+    assert(l.empty() || l.size() > 1);
 
-  if (result.empty()) {
+    options_.add_option(
+      group_,
+      std::move(s),
+      std::move(l),
+      desc,
+      value,
+      std::move(arg_help));
+  } else {
     throw_or_mimic<invalid_option_format_error>(opts);
   }
-
-  std::string short_match = result[2].str();
-  std::string long_match = result[3].str();
-
-  if (short_match.empty() && long_match.length() == 1) {
-    std::swap(short_match, long_match);
-  }
-  if ((!short_match.length() && !long_match.length()) ||
-      ( short_match.length() &&  long_match.length() == 1))
-  {
-    throw_or_mimic<invalid_option_format_error>(opts);
-  }
-
-  options_.add_option(
-    group_,
-    std::move(short_match),
-    std::move(long_match),
-    desc,
-    value,
-    std::move(arg_help));
-
   return *this;
 }
 
