@@ -733,7 +733,7 @@ public:
     auto next_positional = positional_.begin();
     std::vector<std::string> unmatched;
 
-    while (current != argc) {
+    while (current < argc) {
       if (strcmp(argv[current], "--") == 0) {
         // Skip dash-dash argument.
         ++current;
@@ -868,7 +868,7 @@ public:
       }
     }
 
-    assert(stop_on_positional_ || argc == current);
+    assert(stop_on_positional_ || argc == current || argc == 0);
 
     return parse_result(
       std::move(keys),

@@ -248,6 +248,16 @@ TEST_CASE("Floats", "[float]") {
 }
 
 
+TEST_CASE("Empty arguments", "[options]") {
+  cxxopts::options options("test", " - test empty arguments");
+  options.add_options()
+    ("?,help", "show help")
+    ("v", "verbose");
+
+  Argv argv({});
+  CHECK_NOTHROW(options.parse(argv.argc(), argv.argv()));
+}
+
 TEST_CASE("Question mark only", "[options]") {
   cxxopts::options options("test_short", " - test question mark");
   options.add_options()("?", "show help");
