@@ -64,15 +64,9 @@ THE SOFTWARE.
 
 #define CXXOPTS__VERSION_MAJOR 5
 #define CXXOPTS__VERSION_MINOR 0
-#define CXXOPTS__VERSION_PATCH 0
+#define CXXOPTS__VERSION_PATCH 1
 
 namespace cxxopts {
-
-class options;
-class parse_result;
-
-template <typename T>
-struct value_parser;
 
 static constexpr struct {
   uint8_t major, minor, patch;
@@ -82,16 +76,14 @@ static constexpr struct {
   CXXOPTS__VERSION_PATCH
 };
 
-#ifdef CXXOPTS_USE_UNICODE
-  using cxx_string = icu::UnicodeString;
-#else
-  using cxx_string = std::string;
-#endif
+} // namespace cxxopts
 
 /**
 * \defgroup Exceptions
 * @{
 */
+
+namespace cxxopts {
 
 class option_error : public std::runtime_error {
 public:
@@ -155,6 +147,8 @@ public:
   explicit option_has_no_value_error(const std::string& name);
 };
 
+namespace {
+
 template <typename T, typename ... Args>
 CXXOPTS_NORETURN
 void throw_or_mimic(Args&& ... args) {
@@ -174,21 +168,18 @@ void throw_or_mimic(Args&& ... args) {
 #endif
 }
 
+} // namespace
+} // namespace cxxopts
+
 /**@}*/
 
 
 /**
-* \defgroup Values setup and parsing
+* \defgroup Value parsing
 * @{
 */
 
-/**
- * Settings for customizing parser behaviour.
- */
-struct parse_context {
-  char delimiter{CXXOPTS_VECTOR_DELIMITER};
-};
-
+namespace cxxopts {
 namespace detail {
 
 void
@@ -247,6 +238,76 @@ parse_value(const std::string& text, std::optional<T>& value) {
 }
 #endif
 
+} // namespace detail
+
+/**
+ * Settings for customizing parser behaviour.
+ */
+struct parse_context {
+  char delimiter{CXXOPTS_VECTOR_DELIMITER};
+};
+
+/**
+ * A parser for values of type T.
+ */
+template <typename T>
+struct value_parser {
+  using value_type = T;
+  /// By default, value cannot act as a container.
+  static constexpr bool is_container = false;
+
+  void parse(const parse_context&, const std::string& text, T& value) {
+    detail::parse_value(text, value);
+  }
+};
+
+template <typename T>
+struct value_parser<std::vector<T>> {
+  using value_type = T;
+  /// Value of type std::vector<T> can act as container.
+  static constexpr bool is_container = true;
+
+  void parse(
+    const parse_context& ctx,
+    const std::string& text,
+    std::vector<T>& value)
+  {
+    using parser_type = value_parser<T>;
+
+    static_assert(!parser_type::is_container ||
+                  !value_parser<typename parser_type::value_type>::is_container,
+                  "dimensions of a container type should not exceed 2");
+
+    if (text.empty()) {
+      value.push_back(T());
+    } else if (parser_type::is_container) {
+      T v;
+      parser_type().parse(ctx, text, v);
+      value.emplace_back(std::move(v));
+    } else {
+      std::istringstream in{text};
+      std::string token;
+      while (!in.eof() && std::getline(in, token, ctx.delimiter)) {
+        T v;
+        parser_type().parse(ctx, token, v);
+        value.emplace_back(std::move(v));
+      }
+    }
+  }
+};
+
+} // namespace cxxopts
+
+/**@}*/
+
+
+/**
+* \defgroup Value setup
+* @{
+*/
+
+namespace cxxopts {
+namespace detail {
 
 #if defined(__GNUC__)
 // GNU GCC with -Weffc++ will issue a warning regarding the upcoming class, we want to silence it:
@@ -481,55 +542,6 @@ private:
 } // namespace detail
 
 /**
- * A parser for values of type T.
- */
-template <typename T>
-struct value_parser {
-  using value_type = T;
-  /// By default, value cannot act as a container.
-  static constexpr bool is_container = false;
-
-  void parse(const parse_context&, const std::string& text, T& value) {
-    detail::parse_value(text, value);
-  }
-};
-
-template <typename T>
-struct value_parser<std::vector<T>> {
-  using value_type = T;
-  /// Value of type std::vector<T> can act as container.
-  static constexpr bool is_container = true;
-
-  void parse(
-    const parse_context& ctx,
-    const std::string& text,
-    std::vector<T>& value)
-  {
-    using parser_type = value_parser<T>;
-
-    static_assert(!parser_type::is_container ||
-                  !value_parser<typename parser_type::value_type>::is_container,
-                  "dimensions of a container type should not exceed 2");
-
-    if (text.empty()) {
-      value.push_back(T());
-    } else if (parser_type::is_container) {
-      T v;
-      parser_type().parse(ctx, text, v);
-      value.emplace_back(std::move(v));
-    } else {
-      std::istringstream in{text};
-      std::string token;
-      while (!in.eof() && std::getline(in, token, ctx.delimiter)) {
-        T v;
-        parser_type().parse(ctx, token, v);
-        value.emplace_back(std::move(v));
-      }
-    }
-  }
-};
-
-/**
  * Creates value holder for the specific type.
  */
 template <typename T>
@@ -547,7 +559,21 @@ inline value(T& t) {
   return std::make_shared<detail::basic_value<T>>(&t);
 }
 
+} // namespace cxxopts
+
 /**@}*/
+
+
+namespace cxxopts {
+
+class options;
+class parse_result;
+
+#ifdef CXXOPTS_USE_UNICODE
+  using cxx_string = icu::UnicodeString;
+#else
+  using cxx_string = std::string;
+#endif
 
 class option_details {
 public:
@@ -809,6 +835,12 @@ public:
       const std::shared_ptr<detail::value_base>& value
         = ::cxxopts::value<bool>(),
       const std::string arg_help = {});
+
+  private:
+    bool
+    parse_option_specifier(const std::string& text,
+      std::string& s,
+      std::string& l) const;
 
   private:
     const std::string group_;

@@ -158,7 +158,7 @@ end(const icu::UnicodeString& s) {
 namespace cxxopts {
 
 template <typename T>
-static
+static inline
 T
 to_local_string(T&& t) {
   return std::forward<T>(t);
@@ -220,59 +220,6 @@ namespace cxxopts {
 static constexpr size_t OPTION_LONGEST = 30;
 static constexpr size_t OPTION_DESC_GAP = 2;
 
-static bool parse_option_specifier(
-  const std::string& text,
-  std::string& s,
-  std::string& l)
-{
-  const char* p = text.c_str();
-  if (*p == 0) {
-    return false;
-  } else {
-    s.clear();
-    l.clear();
-  }
-  // Short option.
-  if (*(p + 1) == 0 || *(p + 1) == ',') {
-    if (*p == '?' || isalnum(*p)) {
-      s = *p;
-      ++p;
-    } else {
-      return false;
-    }
-  }
-  // Skip comma.
-  if (*p == ',') {
-    if (s.empty()) {
-      return false;
-    }
-    ++p;
-  }
-  // Skip spaces.
-  while (*p && *p == ' ') {
-    ++p;
-  }
-  // Valid specifier without long option.
-  if (*p == 0) {
-    return true;
-  } else {
-    l.reserve((text.c_str() + text.size()) - p);
-  }
-  // First char of an option name should be alnum.
-  if (isalnum(*p)) {
-    l += *p;
-    ++p;
-  }
-  for (; *p; ++p) {
-    if (*p == '-' || *p == '_' || isalnum(*p)) {
-      l += *p;
-    } else {
-      return false;
-    }
-  }
-  return l.size() > 1;
-}
-
 option_error::option_error(const std::string& what_arg)
   : std::runtime_error(what_arg)
 {
@@ -293,7 +240,7 @@ parse_error::parse_error(const std::string& what_arg)
 
 option_exists_error::option_exists_error(const std::string& option)
   : spec_error(
-      "Option " + LQUOTE + option + RQUOTE + " already exists")
+    "Option " + LQUOTE + option + RQUOTE + " already exists")
 {
 }
 
@@ -355,8 +302,9 @@ option_has_no_value_error::option_has_no_value_error(
 
 
 argument_incorrect_type::argument_incorrect_type(
-  const std::string& arg,
-  const std::string& type)
+    const std::string& arg,
+    const std::string& type
+  )
   : parse_error(
     "Argument " + LQUOTE + arg + RQUOTE + " failed to parse" +
     (type.empty() ? std::string() : (": " + type + " expected")))
@@ -591,7 +539,8 @@ parse_value(const std::string& text, bool& value) {
   throw_or_mimic<argument_incorrect_type>(text, "bool");
 }
 
-void parse_value(const std::string& text, char& c) {
+void
+parse_value(const std::string& text, char& c) {
   if (text.length() != 1) {
     throw_or_mimic<argument_incorrect_type>(text, "char");
   }
@@ -985,7 +934,8 @@ private:
     return false;
   }
 
-  bool is_dash_dash_or_option_name(const char* const arg) const {
+  bool
+  is_dash_dash_or_option_name(const char* const arg) const {
       // The dash-dash symbol has a special meaning and cannot
       // be interpreted as an option value.
       if (strcmp(arg, "--") == 0) {
@@ -1046,7 +996,8 @@ private:
     }
   }
 
-  bool parse_argument(const std::string& text, option_data& data) const {
+  bool
+  parse_argument(const std::string& text, option_data& data) const {
     const char* p = text.c_str();
     // String should not be empty and should starts with '-'.
     if (*p == 0 || *p != '-') {
@@ -1572,6 +1523,60 @@ options::option_adder::operator()(
     throw_or_mimic<invalid_option_format_error>(opts);
   }
   return *this;
+}
+
+bool
+options::option_adder::parse_option_specifier(
+  const std::string& text,
+  std::string& s,
+  std::string& l) const
+{
+  const char* p = text.c_str();
+  if (*p == 0) {
+    return false;
+  } else {
+    s.clear();
+    l.clear();
+  }
+  // Short option.
+  if (*(p + 1) == 0 || *(p + 1) == ',') {
+    if (*p == '?' || isalnum(*p)) {
+      s = *p;
+      ++p;
+    } else {
+      return false;
+    }
+  }
+  // Skip comma.
+  if (*p == ',') {
+    if (s.empty()) {
+      return false;
+    }
+    ++p;
+  }
+  // Skip spaces.
+  while (*p && *p == ' ') {
+    ++p;
+  }
+  // Valid specifier without long option.
+  if (*p == 0) {
+    return true;
+  } else {
+    l.reserve((text.c_str() + text.size()) - p);
+  }
+  // First char of an option name should be alnum.
+  if (isalnum(*p)) {
+    l += *p;
+    ++p;
+  }
+  for (; *p; ++p) {
+    if (*p == '-' || *p == '_' || isalnum(*p)) {
+      l += *p;
+    } else {
+      return false;
+    }
+  }
+  return l.size() > 1;
 }
 
 } // namespace cxxopts
