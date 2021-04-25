@@ -147,7 +147,7 @@ public:
   explicit option_has_no_value_error(const std::string& name);
 };
 
-namespace {
+namespace detail {
 
 template <typename T, typename ... Args>
 CXXOPTS_NORETURN
@@ -168,7 +168,7 @@ void throw_or_mimic(Args&& ... args) {
 #endif
 }
 
-} // namespace
+} // namespace detail
 } // namespace cxxopts
 
 /**@}*/
@@ -224,7 +224,7 @@ parse_value(const std::string& text, T& value) {
   std::istringstream in{text};
   in >> value;
   if (!in) {
-    throw_or_mimic<argument_incorrect_type>(text);
+    detail::throw_or_mimic<argument_incorrect_type>(text);
   }
 }
 
@@ -646,7 +646,7 @@ public:
   const T&
   as() const {
     if (!has_value()) {
-      throw_or_mimic<option_has_no_value_error>(long_name_);
+      detail::throw_or_mimic<option_has_no_value_error>(long_name_);
     }
 #ifdef CXXOPTS_NO_RTTI
     return static_cast<const detail::basic_value<T>&>(*value_).get();

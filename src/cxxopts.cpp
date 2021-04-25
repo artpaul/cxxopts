@@ -438,24 +438,24 @@ integer_parser(const std::string& text, T& value) {
 
   // Parse text to the uint64_t value.
   if (!parse_uint64(text, u64_result, negative)) {
-    throw_or_mimic<argument_incorrect_type>(text, "integer");
+    detail::throw_or_mimic<argument_incorrect_type>(text, "integer");
   }
   // Check unsigned overflow.
   if (u64_result > std::numeric_limits<US>::max()) {
-    throw_or_mimic<argument_incorrect_type>(text, "integer");
+    detail::throw_or_mimic<argument_incorrect_type>(text, "integer");
   } else {
     result = static_cast<US>(u64_result);
   }
   // Check signed overflow.
   if (!check_signed_range<T>(result, negative)) {
-    throw_or_mimic<argument_incorrect_type>(text, "integer");
+    detail::throw_or_mimic<argument_incorrect_type>(text, "integer");
   }
   // Negate value.
   if (negative) {
     if (!checked_negate<T>(value, result,
         std::integral_constant<bool, std::numeric_limits<T>::is_signed>()))
     {
-      throw_or_mimic<argument_incorrect_type>(text, "integer");
+      detail::throw_or_mimic<argument_incorrect_type>(text, "integer");
     }
   } else {
     value = static_cast<T>(result);
@@ -536,13 +536,13 @@ parse_value(const std::string& text, bool& value) {
     }
     break;
   }
-  throw_or_mimic<argument_incorrect_type>(text, "bool");
+  detail::throw_or_mimic<argument_incorrect_type>(text, "bool");
 }
 
 void
 parse_value(const std::string& text, char& c) {
   if (text.length() != 1) {
-    throw_or_mimic<argument_incorrect_type>(text, "char");
+    detail::throw_or_mimic<argument_incorrect_type>(text, "char");
   }
 
   c = text[0];
@@ -703,12 +703,12 @@ const option_value&
 parse_result::operator[](const std::string& option) const {
   const auto ki = keys_.find(option);
   if (ki == keys_.end()) {
-    throw_or_mimic<option_not_present_error>(option);
+    detail::throw_or_mimic<option_not_present_error>(option);
   }
 
   const auto vi = values_.find(ki->second);
   if (vi == values_.end()) {
-    throw_or_mimic<option_not_present_error>(option);
+    detail::throw_or_mimic<option_not_present_error>(option);
   }
 
   return vi->second;
@@ -787,7 +787,7 @@ public:
         // But if it starts with a `-`, then it's an error.
         if (argv[current][0] == '-' && argv[current][1] != '\0') {
           if (!allow_unrecognised_) {
-            throw_or_mimic<option_syntax_error>(argv[current]);
+            detail::throw_or_mimic<option_syntax_error>(argv[current]);
           }
         }
         if (stop_on_positional_) {
@@ -814,7 +814,7 @@ public:
                 continue;
               }
               // Error.
-              throw_or_mimic<option_not_exists_error>(name);
+              detail::throw_or_mimic<option_not_exists_error>(name);
             }
 
             const auto& opt = oi->second;
@@ -841,7 +841,7 @@ public:
               continue;
             }
             // Error.
-            throw_or_mimic<option_not_exists_error>(name);
+            detail::throw_or_mimic<option_not_exists_error>(name);
           }
 
           const auto& opt = oi->second;
@@ -919,7 +919,7 @@ private:
     for (; next != positional_.end(); ++next) {
       const auto oi = options_.find(*next);
       if (oi == options_.end()) {
-        throw_or_mimic<option_not_exists_error>(*next);
+        detail::throw_or_mimic<option_not_exists_error>(*next);
       }
       if (oi->second->value()->is_container()) {
         add_to_option(oi, *next, a);
@@ -975,7 +975,7 @@ private:
       if (value->value()->has_implicit()) {
         parse_option(value, name, value->value()->get_implicit_value());
       } else {
-        throw_or_mimic<missing_argument_error>(name);
+        detail::throw_or_mimic<missing_argument_error>(name);
       }
     };
 
@@ -1205,7 +1205,7 @@ options::add_one_option(
   const auto in = options_.emplace(name, details);
 
   if (!in.second) {
-    throw_or_mimic<option_exists_error>(name);
+    detail::throw_or_mimic<option_exists_error>(name);
   }
 }
 
@@ -1520,7 +1520,7 @@ options::option_adder::operator()(
       value,
       std::move(arg_help));
   } else {
-    throw_or_mimic<invalid_option_format_error>(opts);
+    detail::throw_or_mimic<invalid_option_format_error>(opts);
   }
   return *this;
 }

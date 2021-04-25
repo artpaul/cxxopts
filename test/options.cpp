@@ -1009,7 +1009,7 @@ struct cxxopts::value_parser<char_pair> {
 
   void parse(const parse_context&, const std::string& text, char_pair& value) {
     if (text.size() != 3) {
-      cxxopts::throw_or_mimic<argument_incorrect_type>(text, "char_pair");
+      cxxopts::detail::throw_or_mimic<argument_incorrect_type>(text, "char_pair");
     }
     value.first = text[0];
     value.second = text[2];
