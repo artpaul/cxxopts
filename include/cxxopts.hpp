@@ -267,7 +267,8 @@ struct value_parser<std::vector<T>> {
   /// Value of type std::vector<T> can act as container.
   static constexpr bool is_container = true;
 
-  void parse(
+  void
+  parse(
     const parse_context& ctx,
     const std::string& text,
     std::vector<T>& value)
@@ -278,19 +279,19 @@ struct value_parser<std::vector<T>> {
                   !value_parser<typename parser_type::value_type>::is_container,
                   "dimensions of a container type should not exceed 2");
 
-    if (text.empty()) {
-      value.push_back(T());
-    } else if (parser_type::is_container) {
+    auto parse_item = [&ctx] (const std::string& txt) {
       T v;
-      parser_type().parse(ctx, text, v);
-      value.emplace_back(std::move(v));
+      parser_type().parse(ctx, txt, v);
+      return v;
+    };
+
+    if (text.empty() || parser_type::is_container) {
+      value.push_back(parse_item(text));
     } else {
       std::istringstream in{text};
       std::string token;
       while (!in.eof() && std::getline(in, token, ctx.delimiter)) {
-        T v;
-        parser_type().parse(ctx, token, v);
-        value.emplace_back(std::move(v));
+        value.push_back(parse_item(token));
       }
     }
   }

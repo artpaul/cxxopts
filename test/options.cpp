@@ -756,6 +756,28 @@ TEST_CASE("std::vector", "[vector]") {
   CHECK(vector[3] == 4.5);
 }
 
+TEST_CASE("Integer vector with empty text", "[vector]") {
+  cxxopts::options options("vector", " - tests vector");
+  options.add_options()
+    ("ints", "vector of ints", cxxopts::value<std::vector<int>>())
+    ("values", "a vector positional", cxxopts::value<std::vector<int>>());
+  options.parse_positional("values");
+
+  SECTION("Values to opiton") {
+    const Argv argv({"vector", "--ints", "1,2,,4"});
+
+    CHECK_THROWS_AS(options.parse(argv.argc(), argv.argv()),
+      cxxopts::argument_incorrect_type&);
+  }
+
+  SECTION("Positional to option") {
+    const Argv argv({"vector", "--", "1", "2", "", "4"});
+
+    CHECK_THROWS_AS(options.parse(argv.argc(), argv.argv()),
+      cxxopts::argument_incorrect_type&);
+  }
+}
+
 #ifdef CXXOPTS_HAS_OPTIONAL
 TEST_CASE("std::optional", "[optional]") {
   std::optional<std::string> optional;
