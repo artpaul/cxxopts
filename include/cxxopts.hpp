@@ -58,13 +58,22 @@ THE SOFTWARE.
 # define CXXOPTS_NODISCARD
 #endif
 
+// Disable exceptions if the specific compiler flags are set.
+#if !(defined(__cpp_exceptions) || defined(__EXCEPTIONS) || defined(_CPPUNWIND))
+# define CXXOPTS_NO_EXCEPTIONS
+#endif
+
+#ifdef CXXOPTS_NO_EXCEPTIONS
+# include <iostream>
+#endif
+
 #ifndef CXXOPTS_VECTOR_DELIMITER
 # define CXXOPTS_VECTOR_DELIMITER ','
 #endif
 
 #define CXXOPTS__VERSION_MAJOR 5
 #define CXXOPTS__VERSION_MINOR 0
-#define CXXOPTS__VERSION_PATCH 1
+#define CXXOPTS__VERSION_PATCH 2
 
 namespace cxxopts {
 
