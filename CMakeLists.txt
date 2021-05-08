@@ -1,4 +1,5 @@
 # Copyright (c) 2014 Jarryd Beck
+# Copyright (c) 2021 Pavel Artemkin
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -72,7 +73,7 @@ endif()
 
 # Build examples when requested by the user
 if (CXXOPTS_BUILD_EXAMPLES)
-    add_subdirectory(src)
+    add_subdirectory(example)
 endif()
 
 # Enable testing when requested by the user

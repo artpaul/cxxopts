@@ -22,9 +22,12 @@ Below are a few of the features which cxxopts supports:
   - Supports delimited values (i.e. `--option=val1,val2,val3`)
   - Supports custom parsers
   - Supports vector of vector values (i.e `--opt=1,2,3 --opt=4,5,6`)
-* **Groups**: Arguments can be made part of a group for the purposes of displaying help messages
+* **Groups**
+  - Arguments can be made part of a group for the purposes of displaying help messages
 * **Default Values**
   - Supports default value from ENV variable
+* **Requirements**
+  - No external dependencies and only C++ 11 compatible compiler is required
 
 # Quick start
 
@@ -285,17 +288,3 @@ int main(int argc, char** argv) {
 
 Note that `master` is generally a work in progress, and you probably want to use a
 tagged release version.
-
-# Requirements
-
-The only build requirement is a C++ compiler that supports C++11 features such as:
-
-* regex
-* constexpr
-* default constructors
-
-GCC >= 4.9 or clang >= 3.1 with libc++ are known to work.
-
-The following compilers are known not to work:
-
-* MSVC 2013
