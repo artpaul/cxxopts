@@ -37,9 +37,13 @@ THE SOFTWARE.
 #include <unordered_set>
 #include <vector>
 
-#ifdef __cpp_lib_optional
-# include <optional>
-# define CXXOPTS_HAS_OPTIONAL
+#ifdef __has_include
+# if __has_include(<optional>)
+#   include <optional>
+#   ifdef __cpp_lib_optional
+#     define CXXOPTS_HAS_OPTIONAL
+#   endif
+# endif
 #endif
 
 #ifdef CXXOPTS_USE_UNICODE
