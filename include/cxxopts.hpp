@@ -444,6 +444,13 @@ protected:
   bool no_value_{false};
 };
 
+#if defined(__GNUC__)
+// GNU GCC with -Weffc++ will issue a warning regarding the upcoming class, we want to silence it:
+// warning: base class 'class std::enable_shared_from_this<cxxopts::value_base>' has accessible non-virtual destructor
+# pragma GCC diagnostic ignored "-Wnon-virtual-dtor"
+# pragma GCC diagnostic push
+// This will be ignored under other compilers like LLVM clang.
+#endif
 template <typename T>
 class basic_value
   : public value_base
@@ -557,6 +564,9 @@ private:
   std::unique_ptr<T> result_{};
   T* store_{};
 };
+#if defined(__GNUC__)
+# pragma GCC diagnostic pop
+#endif
 
 } // namespace detail
 
