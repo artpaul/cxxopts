@@ -75,8 +75,8 @@ TEST_CASE("Booleans", "[boolean]") {
     ("verbose", "Verbose", cxxopts::value<bool>())
     ("dry-run", "Dry Run", cxxopts::value<bool>())
     ("noExplicitDefault", "No Explicit Default", cxxopts::value<bool>())
-    ("defaultTrue", "Timing", cxxopts::value<bool>()->default_value("true"))
-    ("defaultFalse", "Timing", cxxopts::value<bool>()->default_value("false"))
+    ("defaultTrue", "Timing", cxxopts::value<bool>()->default_value(true))
+    ("defaultFalse", "Timing", cxxopts::value<bool>()->default_value(false))
     ("others", "Other arguments", cxxopts::value<std::vector<std::string>>())
     ;
   options.parse_positional("others");
@@ -694,7 +694,7 @@ TEST_CASE("Boolean without implicit value", "[implicit]") {
 TEST_CASE("Default values", "[default]") {
   cxxopts::options options("defaults", "has defaults");
   options.add_options()
-    ("default", "Has implicit", cxxopts::value<int>()->default_value("42"))
+    ("default", "Has implicit", cxxopts::value<int>()->default_value(42))
     ("v,vector", "Default vector", cxxopts::value<std::vector<int>>()
       ->default_value("1,4"))
     ;
@@ -962,7 +962,7 @@ TEST_CASE("Initializer list with group", "[options]") {
 TEST_CASE("Option add with add_option(string, Option)", "[options]") {
   cxxopts::options options("Option add with add_option", " - test Option add with add_option(string, Option)");
 
-  cxxopts::option option_1("t,test", "test option", cxxopts::value<int>()->default_value("7"), "TEST");
+  cxxopts::option option_1("t,test", "test option", cxxopts::value<int>()->default_value(7), "TEST");
 
   options.add_option("", option_1);
   options.add_option("TEST", {"a,aggregate", "test option 2", cxxopts::value<int>(), "AGGREGATE"});
@@ -999,8 +999,8 @@ TEST_CASE("Value from ENV variable", "[options]") {
   options.add_options("", {
     {"b,bar", "bar option", cxxopts::value<int>()->env("CXXOPTS_BAR")},
     {"f,foo", "foo option", cxxopts::value<int>()->env("CXXOPTS_FOO")},
-    {"z,baz", "baz option", cxxopts::value<int>()->env("CXXOPTS_BAZ")->default_value("99")},
-    {"e,empty", "empty option", cxxopts::value<int>()->env("CXXOPTS_EMPTY")->default_value("1")},
+    {"z,baz", "baz option", cxxopts::value<int>()->env("CXXOPTS_BAZ")->default_value(99)},
+    {"e,empty", "empty option", cxxopts::value<int>()->env("CXXOPTS_EMPTY")->default_value(1)},
   });
 
   putenv((char*)"CXXOPTS_FOO=7");

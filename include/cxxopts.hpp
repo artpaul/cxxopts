@@ -79,6 +79,14 @@ THE SOFTWARE.
 #define CXXOPTS__VERSION_MINOR 0
 #define CXXOPTS__VERSION_PATCH 2
 
+namespace std {
+
+inline std::string to_string(std::string s) {
+  return s;
+}
+
+} // namespace std
+
 namespace cxxopts {
 
 static constexpr struct {
@@ -323,14 +331,7 @@ struct value_parser<std::vector<T>> {
 namespace cxxopts {
 namespace detail {
 
-#if defined(__GNUC__)
-// GNU GCC with -Weffc++ will issue a warning regarding the upcoming class, we want to silence it:
-// warning: base class 'class std::enable_shared_from_this<cxxopts::value_base>' has accessible non-virtual destructor
-# pragma GCC diagnostic ignored "-Wnon-virtual-dtor"
-# pragma GCC diagnostic push
-// This will be ignored under other compilers like LLVM clang.
-#endif
-class value_base : public std::enable_shared_from_this<value_base> {
+class value_base {
 public:
   value_base() = default;
 
@@ -375,66 +376,6 @@ public:
   bool
   get_no_value() const noexcept {
     return no_value_;
-  }
-
-  /**
-   * Sets default value.
-   *
-   * Templated version is used to avoid implicit conversion 0u or nullptr
-   * to a string, that leads to runtime error.
-   */
-  template <typename T>
-  std::shared_ptr<value_base>
-  default_value(T&& value) {
-    default_ = true;
-    default_value_.assign(std::forward<T>(value));
-    return shared_from_this();
-  }
-
-  /** Sets delimiter for list values. */
-  std::shared_ptr<value_base>
-  delimiter(const char del) {
-    parse_ctx_.delimiter = del;
-    return shared_from_this();
-  }
-
-  /** Sets env variable. */
-  template <typename T>
-  std::shared_ptr<value_base>
-  env(T&& var) {
-    env_ = true;
-    env_var_.assign(std::forward<T>(var));
-    return shared_from_this();
-  }
-
-  /**
-   * Sets implicit value.
-   *
-   * Templated version is used to avoid implicit conversion 0u or nullptr
-   * to a string, that leads to runtime error.
-   */
-  template <typename T>
-  std::shared_ptr<value_base>
-  implicit_value(T&& value) {
-    implicit_ = true;
-    implicit_value_.assign(std::forward<T>(value));
-    return shared_from_this();
-  }
-
-  /** Clears implicit value. */
-  std::shared_ptr<value_base>
-  no_implicit_value() {
-    no_value_ = false;
-    implicit_ = false;
-    implicit_value_.clear();
-    return shared_from_this();
-  }
-
-  /** Sets no-value field. */
-  std::shared_ptr<value_base>
-  no_value(const bool on = true) {
-    no_value_ = on;
-    return shared_from_this();
   }
 
   /** Returns whether the type of the value is boolean. */
@@ -482,7 +423,7 @@ protected:
     }
   }
 
-private:
+protected:
   /// A default value for the option.
   std::string default_value_{};
   /// A name of an environment variable from which a default
@@ -502,12 +443,12 @@ private:
   /// There should be no value for the option.
   bool no_value_{false};
 };
-#if defined(__GNUC__)
-# pragma GCC diagnostic pop
-#endif
 
 template <typename T>
-class basic_value : public value_base {
+class basic_value
+  : public value_base
+  , public std::enable_shared_from_this<basic_value<T>>
+{
   using parser_type = value_parser<T>;
 public:
   basic_value()
@@ -523,9 +464,73 @@ public:
     set_default_and_implicit();
   }
 
+  /**
+   * Sets default value.
+   *
+   * Templated version is used to avoid implicit conversion 0u or nullptr
+   * to a string, that leads to runtime error.
+   */
+  template <typename U>
+  std::shared_ptr<basic_value<T>>
+  default_value(U&& value) {
+    static_assert(std::is_convertible<U, T>::value || parser_type::is_container, "incompatible types");
+
+    default_ = true;
+    default_value_ = std::to_string(std::forward<U>(value));
+    return this->shared_from_this();
+  }
+
+  /** Sets delimiter for list values. */
+  std::shared_ptr<basic_value<T>>
+  delimiter(const char del) {
+    parse_ctx_.delimiter = del;
+    return this->shared_from_this();
+  }
+
+  /** Sets name of env variable. */
+  template <typename U>
+  std::shared_ptr<basic_value<T>>
+  env(U&& var) {
+    env_ = true;
+    env_var_.assign(std::forward<U>(var));
+    return this->shared_from_this();
+  }
+
   const T&
   get() const {
     return *store_;
+  }
+
+  /**
+   * Sets implicit value.
+   *
+   * Templated version is used to avoid implicit conversion 0u or nullptr
+   * to a string, that leads to runtime error.
+   */
+  template <typename U>
+  std::shared_ptr<basic_value<T>>
+  implicit_value(U&& value) {
+    static_assert(std::is_convertible<U, T>::value || parser_type::is_container, "incompatible types");
+
+    implicit_ = true;
+    implicit_value_ = std::to_string(std::forward<U>(value));
+    return this->shared_from_this();
+  }
+
+  /** Clears implicit value. */
+  std::shared_ptr<basic_value<T>>
+  no_implicit_value() {
+    no_value_ = false;
+    implicit_ = false;
+    implicit_value_.clear();
+    return this->shared_from_this();
+  }
+
+  /** Sets no-value field. */
+  std::shared_ptr<basic_value<T>>
+  no_value(const bool on = true) {
+    no_value_ = on;
+    return this->shared_from_this();
   }
 
 protected:
