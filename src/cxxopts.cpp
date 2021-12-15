@@ -810,7 +810,7 @@ public:
 
             if (oi == options_.end()) {
               if (allow_unrecognised_) {
-                // TODO: keep unrecognized.
+                unmatched.push_back(std::string("-") + seq[i]);
                 continue;
               }
               // Error.
