@@ -783,7 +783,7 @@ private:
   name_hash_map keys_{};
   parsed_hash_map values_{};
   std::vector<key_value> sequential_{};
-  /// List of arguments that did not match any defined option.
+  /// List of arguments that did not match to any defined option.
   std::vector<std::string> unmatched_{};
   /// Number of consument command line arguments.
   size_t consumed_arguments_{0};

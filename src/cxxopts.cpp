@@ -695,8 +695,8 @@ parse_result::count(const std::string& o) const {
 }
 
 bool
-parse_result::has(const std::string& o) const {
-  return count(o) != 0;
+parse_result::has(const std::string& opt) const {
+  return count(opt) != 0;
 }
 
 const option_value&
@@ -859,24 +859,28 @@ public:
       ++current;
     }
 
+    // Setup default or env values.
     for (auto& opt : options_) {
       auto& detail = opt.second;
+      auto& store = parsed_[detail->hash()];
       const auto& value = detail->value();
 
-      auto& store = parsed_[detail->hash()];
-
-      if (value->has_default()) {
-        if (!store.count() && !store.has_default()) {
-          parse_default(detail);
-        }
-      } else {
-        parse_no_value(detail);
+      // Skip options with parsed values.
+      if (store.count() || store.has_default()) {
+        continue;
       }
-
-      if (value->has_env() && !store.count()){
+      // Try to setup env value.
+      if (value->has_env()) {
         if (const char* env = std::getenv(value->get_env_var().c_str())) {
           store.parse(detail, std::string(env));
+          continue;
         }
+      }
+      // Try to setup default value.
+      if (value->has_default()) {
+        store.parse_default(detail);
+      } else {
+        store.parse_no_value(detail);
       }
     }
 
