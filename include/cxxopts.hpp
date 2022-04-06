@@ -947,6 +947,8 @@ public:
   const help_group_details&
   group_help(const std::string& group) const;
 
+  const std::string& program() const;
+
 private:
   void
   add_option(

@@ -1486,6 +1486,11 @@ options::group_help(const std::string& group) const {
   return help_.at(group);
 }
 
+const std::string&
+options::program() const {
+  return program_;
+}
+
 options::option_adder
 options::add_options(std::string group)
 {
