@@ -1102,6 +1102,12 @@ options::custom_help(std::string help_text) {
 }
 
 options&
+options::footer(std::string text) {
+  footer_ = std::move(text);
+  return *this;
+}
+
+options&
 options::positional_help(std::string help_text) {
   positional_help_ = std::move(help_text);
   return *this;
@@ -1462,6 +1468,11 @@ options::help(const std::vector<std::string>& help_groups) const {
     generate_all_groups_help(result);
   } else {
     generate_group_help(result, help_groups);
+  }
+
+  if (!empty(footer_)) {
+    result += "\n";
+    result += to_local_string(footer_);
   }
 
   return to_utf8_string(result);

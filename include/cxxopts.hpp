@@ -893,6 +893,9 @@ public:
   options&
   custom_help(std::string help_text);
 
+  options&
+  footer(std::string text);
+
   template <typename ... Args>
   void
   parse_positional(Args&& ... args) {
@@ -998,8 +1001,9 @@ private:
 
   const std::string program_;
   const cxx_string help_string_;
-  std::string custom_help_{};
+  std::string custom_help_;
   std::string positional_help_;
+  std::string footer_{};
   size_t width_{76};
   /// Allow consume unrecognized options
   /// instead of throwing an error.

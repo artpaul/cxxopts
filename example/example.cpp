@@ -74,6 +74,7 @@ parse(int argc, const char* argv[])
       ("d,drop", "drop", cxxopts::value<std::vector<std::string>>());
 
     options.parse_positional({"input", "output", "positional"});
+    options.footer("Any final description.\nCan be multiline.");
 
     auto result = options.parse(argc, argv);
 
