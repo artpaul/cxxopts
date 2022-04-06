@@ -398,10 +398,15 @@ TEST_CASE("Short options", "[options]") {
 
   const Argv argv({"test_short", "-a", "value"});
   const auto result = options.parse(argv.argc(), argv.argv());
+  const auto& arguments = result.arguments();
 
   CHECK(result.count("a") == 1);
   CHECK(result["a"].as<std::string>() == "value");
   CHECK(result.consumed() == argv.argc());
+
+  REQUIRE(arguments.size() == 1);
+  CHECK(arguments[0].key() == "a");
+  CHECK(arguments[0].value() == "value");
 
   REQUIRE_THROWS_AS(options.add_options()("", "nothing option"),
     cxxopts::invalid_option_format_error&);
@@ -981,7 +986,7 @@ TEST_CASE("Option add with add_option(string, Option)", "[options]") {
   auto** argv = argv_.argv();
   auto result = options.parse(argc, argv);
 
-  CHECK(result.arguments().size()==2);
+  CHECK(result.arguments().size() == 2);
   CHECK(options.groups().size() == 2);
   CHECK(result.count("address") == 0);
   CHECK(result.count("aggregate") == 1);
@@ -1013,7 +1018,7 @@ TEST_CASE("Value from ENV variable", "[options]") {
   const Argv argv({"test", "--foo", "5"});
   const auto result = options.parse(argv.argc(), argv.argv());
 
-  CHECK(result.arguments().size()==1);
+  CHECK(result.arguments().size() == 1);
   CHECK(options.groups().size() == 1);
   CHECK(result.count("foo") == 1);
   // value passed as an argument should take precedence

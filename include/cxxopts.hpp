@@ -607,6 +607,10 @@ public:
 
   CXXOPTS_NODISCARD
   const std::string&
+  canonical_name() const;
+
+  CXXOPTS_NODISCARD
+  const std::string&
   short_name() const;
 
   CXXOPTS_NODISCARD

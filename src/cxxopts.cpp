@@ -581,6 +581,11 @@ option_details::value() const {
 }
 
 const std::string&
+option_details::canonical_name() const {
+  return long_.empty() ? short_ : long_;
+}
+
+const std::string&
 option_details::short_name() const {
   return short_;
 }
@@ -822,9 +827,9 @@ public:
               // It must be the last argument.
               checked_parse_arg(argc, argv, current, opt, name);
             } else if (opt->value()->has_implicit()) {
-              parse_option(opt, name, opt->value()->get_implicit_value());
+              parse_option(opt, opt->value()->get_implicit_value());
             } else {
-              parse_option(opt, name, seq.substr(i + 1));
+              parse_option(opt, seq.substr(i + 1));
               break;
             }
           }
@@ -848,7 +853,7 @@ public:
           // Equal sign provided for the long option?
           if (result.has_value) {
             // Parse the option given.
-            parse_option(opt, name, result.value);
+            parse_option(opt, result.value);
           } else {
             // Parse the next argument.
             checked_parse_arg(argc, argv, current, opt, name);
@@ -909,28 +914,19 @@ public:
   }
 
 private:
-  void
-  add_to_option(
-    option_map::const_iterator iter,
-    const std::string& option,
-    const std::string& arg)
-  {
-    parse_option(iter->second, option, arg);
-  }
-
   bool
-  consume_positional(const std::string& a, positional_list_iterator& next) {
+  consume_positional(const std::string& arg, positional_list_iterator& next) {
     for (; next != positional_.end(); ++next) {
       const auto oi = options_.find(*next);
       if (oi == options_.end()) {
         detail::throw_or_mimic<option_not_exists_error>(*next);
       }
       if (oi->second->value()->is_container()) {
-        add_to_option(oi, *next, a);
+        parse_option(oi->second, arg);
         return true;
       }
       if (parsed_[oi->second->hash()].count() == 0) {
-        add_to_option(oi, *next, a);
+        parse_option(oi->second, arg);
         ++next;
         return true;
       }
@@ -977,7 +973,7 @@ private:
   {
     auto parse_implicit = [&] () {
       if (value->value()->has_implicit()) {
-        parse_option(value, name, value->value()->get_implicit_value());
+        parse_option(value, value->value()->get_implicit_value());
       } else {
         detail::throw_or_mimic<missing_argument_error>(name);
       }
@@ -994,7 +990,7 @@ private:
         parse_implicit();
       } else {
         // Parse argument as a value for the option.
-        parse_option(value, name, arg);
+        parse_option(value, arg);
         ++current;
       }
     }
@@ -1058,12 +1054,11 @@ private:
 
   void
   parse_option(
-    const std::shared_ptr<option_details>& value,
-    const std::string&,
+    const std::shared_ptr<option_details>& details,
     const std::string& arg)
   {
-    parsed_[value->hash()].parse(value, arg);
-    sequential_.emplace_back(value->long_name(), arg);
+    parsed_[details->hash()].parse(details, arg);
+    sequential_.emplace_back(details->canonical_name(), arg);
   }
 
   void
