@@ -28,6 +28,7 @@ THE SOFTWARE.
 #include <algorithm>
 #include <cassert>
 #include <cstdlib>
+#include <limits>
 #include <string.h>
 
 //when we ask cxxopts to use Unicode, help strings are processed using ICU,
