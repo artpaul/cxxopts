@@ -76,8 +76,8 @@ THE SOFTWARE.
 #endif
 
 #define CXXOPTS__VERSION_MAJOR 5
-#define CXXOPTS__VERSION_MINOR 0
-#define CXXOPTS__VERSION_PATCH 2
+#define CXXOPTS__VERSION_MINOR 1
+#define CXXOPTS__VERSION_PATCH 1
 
 namespace cxxopts {
 
@@ -384,7 +384,10 @@ public:
    * to a string, that leads to runtime error.
    */
   template <typename T>
-  std::shared_ptr<value_base>
+  typename std::enable_if<
+    !std::is_same<std::nullptr_t, typename std::remove_cv<T>::type>::value,
+    std::shared_ptr<value_base>
+  >::type
   default_value(T&& value) {
     default_ = true;
     default_value_.assign(std::forward<T>(value));
@@ -400,7 +403,10 @@ public:
 
   /** Sets env variable. */
   template <typename T>
-  std::shared_ptr<value_base>
+  typename std::enable_if<
+    !std::is_same<std::nullptr_t, typename std::remove_cv<T>::type>::value,
+    std::shared_ptr<value_base>
+  >::type
   env(T&& var) {
     env_ = true;
     env_var_.assign(std::forward<T>(var));
@@ -414,7 +420,10 @@ public:
    * to a string, that leads to runtime error.
    */
   template <typename T>
-  std::shared_ptr<value_base>
+  typename std::enable_if<
+    !std::is_same<std::nullptr_t, typename std::remove_cv<T>::type>::value,
+    std::shared_ptr<value_base>
+  >::type
   implicit_value(T&& value) {
     implicit_ = true;
     implicit_value_.assign(std::forward<T>(value));
