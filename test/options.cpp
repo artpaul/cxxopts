@@ -112,6 +112,10 @@ TEST_CASE("Booleans", "[boolean]") {
 TEST_CASE("Parse ingeger", "[integer]") {
   CHECK(validate_value_parser<int8_t>("-1", -1));
   CHECK(validate_value_parser<int8_t>("+1", +1));
+
+  CHECK(validate_value_parser<uint64_t>(
+    std::to_string(std::numeric_limits<uint64_t>::max()),
+    std::numeric_limits<uint64_t>::max()));
 }
 
 TEST_CASE("Parse invalid ingeger", "[integer]") {
@@ -144,9 +148,28 @@ TEST_CASE("Overflow on boundary", "[integer]") {
 TEST_CASE("Integer overflow", "[integer]") {
   using namespace cxxopts::detail;
 
-  int integer = 0;
-  CHECK_THROWS_AS((parse_value("23423423423", integer)), cxxopts::argument_incorrect_type&);
-  CHECK_THROWS_AS((parse_value("234234234234", integer)), cxxopts::argument_incorrect_type&);
+  uint8_t ui8_value;
+  uint16_t ui16_value;
+  uint32_t ui32_value;
+  uint64_t ui64_value;
+
+  CHECK_THROWS_AS((parse_value("256", ui8_value)), cxxopts::argument_incorrect_type&);
+  CHECK_THROWS_AS((parse_value("65536", ui16_value)), cxxopts::argument_incorrect_type&);
+  CHECK_THROWS_AS((parse_value("4294967296", ui32_value)), cxxopts::argument_incorrect_type&);
+  CHECK_THROWS_AS((parse_value("23423423423", ui32_value)), cxxopts::argument_incorrect_type&);
+  CHECK_THROWS_AS((parse_value("234234234234", ui32_value)), cxxopts::argument_incorrect_type&);
+  CHECK_THROWS_AS((parse_value("18446744073709551616", ui64_value)), cxxopts::argument_incorrect_type&);
+  CHECK_THROWS_AS((parse_value("28446744073709551616", ui64_value)), cxxopts::argument_incorrect_type&);
+
+  int8_t i8_value;
+  int16_t i16_value;
+  int32_t i32_value;
+  int64_t i64_value;
+
+  CHECK_THROWS_AS((parse_value("-129", i8_value)), cxxopts::argument_incorrect_type&);
+  CHECK_THROWS_AS((parse_value("-32769", i16_value)), cxxopts::argument_incorrect_type&);
+  CHECK_THROWS_AS((parse_value("-2147483649", i32_value)), cxxopts::argument_incorrect_type&);
+  CHECK_THROWS_AS((parse_value("-9223372036854775809", i64_value)), cxxopts::argument_incorrect_type&);
 }
 
 TEST_CASE("Integers", "[integer]") {

@@ -76,8 +76,8 @@ THE SOFTWARE.
 #endif
 
 #define CXXOPTS__VERSION_MAJOR 5
-#define CXXOPTS__VERSION_MINOR 1
-#define CXXOPTS__VERSION_PATCH 1
+#define CXXOPTS__VERSION_MINOR 2
+#define CXXOPTS__VERSION_PATCH 0
 
 namespace cxxopts {
 

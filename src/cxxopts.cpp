@@ -416,12 +416,11 @@ parse_uint64(const std::string& text, uint64_t& value, bool& negative) noexcept 
       } else {
         return false;
       }
-
-      const uint64_t next = value * 10u + digit;
-      if (value > next) {
+      if ((value > std::numeric_limits<uint64_t>::max() / 10u) ||
+          (value == std::numeric_limits<uint64_t>::max() / 10u && digit > 5)) {
         return false;
       } else {
-        value = next;
+        value = value * 10u + digit;
       }
     }
   }
