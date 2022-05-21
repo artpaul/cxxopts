@@ -67,7 +67,7 @@ TEST_CASE("Value", "traits") {
 
 
 TEST_CASE("Booleans", "[boolean]") {
-  cxxopts::options options("parses_floats", "parses floats correctly");
+  cxxopts::options options("booleans", "parses booleans");
   options.add_options()
     ("bool", "A Boolean", cxxopts::value<bool>())
     ("debug", "Debugging", cxxopts::value<bool>())
@@ -252,23 +252,30 @@ TEST_CASE("Floats", "[float]") {
   cxxopts::options options("parses_floats", "parses floats correctly");
   options.add_options()
     ("double", "Double precision", cxxopts::value<double>())
+    ("long-double", "Long double precision", cxxopts::value<long double>())
     ("positional", "Floats", cxxopts::value<std::vector<float>>());
   options.parse_positional("positional");
 
   const Argv argv({
-    "floats", "--double", "0.5", "--", "4", "-4", "1.5e6", "-1.5e6"});
+    "floats", "--double", "0.5", "--long-double", "0.001",
+    "--", "4", "-4", "1.5e6", "-1.5e6", "Inf", "Nan", "-inf"});
   const auto result = options.parse(argv.argc(), argv.argv());
 
   REQUIRE(result.count("double") == 1);
-  REQUIRE(result.count("positional") == 4);
+  REQUIRE(result.count("long-double") == 1);
+  REQUIRE(result.count("positional") == 7);
 
   CHECK(result["double"].as<double>() == 0.5);
+  CHECK(result["long-double"].as<long double>() == 0.001L);
 
   const auto& positional = result["positional"].as<std::vector<float>>();
   CHECK(positional[0] == 4);
   CHECK(positional[1] == -4);
   CHECK(positional[2] == 1.5e6);
   CHECK(positional[3] == -1.5e6);
+  CHECK(std::isinf(positional[4]));
+  CHECK(std::isnan(positional[5]));
+  CHECK(std::isinf(positional[6]));
 }
 
 
