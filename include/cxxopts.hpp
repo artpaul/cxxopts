@@ -220,6 +220,15 @@ void
 parse_value(const std::string& text, int64_t& value);
 
 void
+parse_value(const std::string& text, float& value);
+
+void
+parse_value(const std::string& text, double& value);
+
+void
+parse_value(const std::string& text, long double& value);
+
+void
 parse_value(const std::string& text, bool& value);
 
 void

@@ -506,6 +506,21 @@ parse_value(const std::string& text, int64_t& value) {
 }
 
 void
+parse_value(const std::string& text, float& value) {
+  value = std::stof(text);
+}
+
+void
+parse_value(const std::string& text, double& value) {
+  value = std::stod(text);
+}
+
+void
+parse_value(const std::string& text, long double& value) {
+  value = std::stold(text);
+}
+
+void
 parse_value(const std::string& text, bool& value) {
   switch (text.size()) {
   case 1: {
