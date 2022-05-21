@@ -284,6 +284,18 @@ int main(int argc, char** argv) {
 }
 ```
 
+## Solving clang-format issue
+
+Currently, there is no way to setup clang-format to format code beautifully with chained call operator. Consider to use initializer_list syntax:
+```cpp
+options.add_options("group name", {
+  {"b,bar", "Param bar", cxxopts::value<std::string>()},
+  {"d,debug", "Enable debugging", cxxopts::value<bool>()->default_value("false")},
+  {"f,foo", "Param foo", cxxopts::value<int>()->default_value("10")},
+  {"h,help", "Print usage"}
+});
+```
+
 # Release versions
 
 Note that `master` is generally a work in progress, and you probably want to use a
