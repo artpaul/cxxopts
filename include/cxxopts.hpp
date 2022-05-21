@@ -174,10 +174,10 @@ void throw_or_mimic(Args&& ... args) {
   throw T{std::forward<Args>(args)...};
 #else
   // Otherwise manually instantiate the exception, print what() to stderr,
-  // and exit
+  // and terminate.
   T exception{std::forward<Args>(args)...};
   std::cerr << exception.what() << std::endl;
-  std::exit(EXIT_FAILURE);
+  std::terminate();
 #endif
 }
 
