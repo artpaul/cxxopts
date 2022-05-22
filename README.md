@@ -296,6 +296,10 @@ options.add_options("group name", {
 });
 ```
 
+# Linking
+
+This is a header only library.
+
 # Release versions
 
 Note that `master` is generally a work in progress, and you probably want to use a
