@@ -919,9 +919,6 @@ std::shared_ptr<detail::basic_value<T>> inline value(T& t) {
 
 namespace cxxopts {
 
-class options;
-class parse_result;
-
 class option_details {
 public:
   option_details(std::string short_name,
@@ -1188,353 +1185,12 @@ private:
   size_t consumed_arguments_{0};
 };
 
-class option {
-public:
-  option(std::string opts,
-         std::string desc,
-         std::shared_ptr<detail::value_base> value = ::cxxopts::value<bool>(),
-         std::string arg_help = {}) noexcept
-    : opts_(std::move(opts))
-    , desc_(std::move(desc))
-    , value_(std::move(value))
-    , arg_help_(std::move(arg_help)) {
-  }
+namespace detail {
 
-private:
-  friend class ::cxxopts::options;
-
-  /// Short and long names of the option.
-  const std::string opts_;
-  /// Description of the option.
-  const std::string desc_;
-  const std::shared_ptr<detail::value_base> value_;
-  const std::string arg_help_;
-};
-
-/**
- * Specification of command line options.
- */
-class options {
-public:
-  struct help_option_details {
-    std::string s{};
-    std::string l{};
-    cxx_string desc{};
-    std::string default_value{};
-    std::string implicit_value{};
-    std::string arg_help{};
-    bool has_implicit{};
-    bool has_default{};
-    bool is_container{};
-    bool is_boolean{};
-  };
-
-  struct help_group_details {
-    std::string name{};
-    std::vector<help_option_details> options{};
-  };
-
-  class option_adder {
-  public:
-    option_adder(const std::string group, options& options)
-      : group_(std::move(group))
-      , options_(options) {
-    }
-
-    option_adder& operator()(const std::string& opts,
-                             const std::string& desc,
-                             const std::shared_ptr<detail::value_base>& value =
-                               ::cxxopts::value<bool>(),
-                             const std::string arg_help = {}) {
-      std::string s;
-      std::string l;
-      if (parse_option_specifier(opts, s, l)) {
-        assert(s.empty() || s.size() == 1);
-        assert(l.empty() || l.size() > 1);
-
-        options_.add_option(group_, std::move(s), std::move(l), desc, value,
-                            std::move(arg_help));
-      } else {
-        detail::throw_or_mimic<invalid_option_format_error>(opts);
-      }
-      return *this;
-    }
-
-  private:
-    bool parse_option_specifier(const std::string& text,
-                                std::string& s,
-                                std::string& l) const {
-      const char* p = text.c_str();
-      if (*p == 0) {
-        return false;
-      } else {
-        s.clear();
-        l.clear();
-      }
-      // Short option.
-      if (*(p + 1) == 0 || *(p + 1) == ',') {
-        if (*p == '?' || isalnum(*p)) {
-          s = *p;
-          ++p;
-        } else {
-          return false;
-        }
-      }
-      // Skip comma.
-      if (*p == ',') {
-        if (s.empty()) {
-          return false;
-        }
-        ++p;
-      }
-      // Skip spaces.
-      while (*p && *p == ' ') {
-        ++p;
-      }
-      // Valid specifier without long option.
-      if (*p == 0) {
-        return true;
-      } else {
-        l.reserve((text.c_str() + text.size()) - p);
-      }
-      // First char of an option name should be alnum.
-      if (isalnum(*p)) {
-        l += *p;
-        ++p;
-      }
-      for (; *p; ++p) {
-        if (*p == '-' || *p == '_' || isalnum(*p)) {
-          l += *p;
-        } else {
-          return false;
-        }
-      }
-      return l.size() > 1;
-    }
-
-  private:
-    const std::string group_;
-    options& options_;
-  };
-
-public:
-  explicit options(std::string program, std::string help_string = {})
-    : program_(std::move(program))
-    , help_string_(to_local_string(std::move(help_string)))
-    , custom_help_("[OPTION...]")
-    , positional_help_("positional parameters") {
-  }
-
-  /**
-   * Adds list of options to the specific group.
-   */
-  void add_options(const std::string& group,
-                   std::initializer_list<option> opts) {
-    option_adder adder(group, *this);
-    for (const auto& opt : opts) {
-      adder(opt.opts_, opt.desc_, opt.value_, opt.arg_help_);
-    }
-  }
-
-  /**
-   * Adds an option to the specific group.
-   */
-  void add_option(const std::string& group, const option& opt) {
-    add_options(group, {opt});
-  }
-
-  option_adder add_options(std::string group = {}) {
-    return option_adder(std::move(group), *this);
-  }
-
-  options& allow_unrecognised_options(const bool value = true) {
-    allow_unrecognised_ = value;
-    return *this;
-  }
-
-  options& custom_help(std::string help_text) {
-    custom_help_ = std::move(help_text);
-    return *this;
-  }
-
-  options& footer(std::string text) {
-    footer_ = std::move(text);
-    return *this;
-  }
-
-  template <typename... Args>
-  void parse_positional(Args&&... args) {
-    parse_positional(std::vector<std::string>{std::forward<Args>(args)...});
-  }
-
-  template <typename I,
-            typename std::enable_if<
-              !std::is_same<typename std::iterator_traits<I>::value_type,
-                            void>::value>::type>
-  void parse_positional(const I begin, const I end) {
-    parse_positional(std::vector<std::string>(begin, end));
-  }
-
-  void parse_positional(std::vector<std::string> opts) {
-    positional_ = std::move(opts);
-    positional_set_ =
-      std::unordered_set<std::string>(positional_.begin(), positional_.end());
-  }
-
-  options& positional_help(std::string help_text) {
-    positional_help_ = std::move(help_text);
-    return *this;
-  }
-
-  options& set_tab_expansion(bool expansion = true) {
-    tab_expansion_ = expansion;
-    return *this;
-  }
-
-  options& set_width(size_t width) {
-    width_ = width;
-    return *this;
-  }
-
-  options& show_positional_help(const bool value = true) {
-    show_positional_ = value;
-    return *this;
-  }
-
-  /**
-   * Stop parsing at first positional argument.
-   */
-  options& stop_on_positional(const bool value = true) {
-    stop_on_positional_ = value;
-    return *this;
-  }
-
-public:
-  /**
-   * Parses the command line arguments according to the current specification.
-   */
-  parse_result parse(int argc, const char* const* argv) const;
-
-  /**
-   * Generates help for the options.
-   */
-  std::string help(const std::vector<std::string>& groups = {}) const;
-
-  /**
-   * Returns list of the defined groups.
-   */
-  std::vector<std::string> groups() const {
-    std::vector<std::string> names;
-
-    names.reserve(help_.size());
-
-    for (auto hi = help_.cbegin(); hi != help_.cend(); ++hi) {
-      names.push_back(hi->first);
-    }
-
-    return names;
-  }
-
-  const help_group_details& group_help(const std::string& group) const {
-    return help_.at(group);
-  }
-
-  const std::string& program() const {
-    return program_;
-  }
-
-private:
-  void add_option(const std::string& group,
-                  std::string s,
-                  std::string l,
-                  std::string desc,
-                  const std::shared_ptr<detail::value_base>& value,
-                  std::string arg_help) {
-    auto string_desc = to_local_string(std::move(desc));
-    auto details = std::make_shared<option_details>(s, l, string_desc, value);
-
-    if (!s.empty()) {
-      add_one_option(s, details);
-    }
-    if (!l.empty()) {
-      add_one_option(l, details);
-    }
-
-    // Add the help details.
-    help_option_details help_opt;
-    help_opt.s = s;
-    help_opt.l = l;
-    help_opt.desc = std::move(string_desc);
-    help_opt.default_value = value->get_default_value();
-    help_opt.implicit_value = value->get_implicit_value();
-    help_opt.arg_help = std::move(arg_help);
-    help_opt.has_implicit = value->has_implicit();
-    help_opt.has_default = value->has_default();
-    help_opt.is_container = value->is_container();
-    help_opt.is_boolean = value->is_boolean();
-    help_[group].options.push_back(std::move(help_opt));
-  }
-
-  void add_one_option(const std::string& name,
-                      const std::shared_ptr<option_details>& details) {
-    const auto in = options_.emplace(name, details);
-
-    if (!in.second) {
-      detail::throw_or_mimic<option_exists_error>(name);
-    }
-  }
-
-  cxx_string format_option(const help_option_details& o) const;
-
-  cxx_string format_description(const help_option_details& o,
-                                size_t start,
-                                size_t allowed,
-                                bool tab_expansion) const;
-
-  cxx_string help_one_group(const std::string& group) const;
-
-  void generate_group_help(cxx_string& result,
-                           const std::vector<std::string>& print_groups) const;
-
-  void generate_all_groups_help(cxx_string& result) const {
-    generate_group_help(result, groups());
-  }
-
-private:
-  class option_parser;
-
+class option_parser {
   using option_map =
     std::unordered_map<std::string, std::shared_ptr<option_details>>;
   using positional_list = std::vector<std::string>;
-
-  const std::string program_;
-  const cxx_string help_string_;
-  std::string custom_help_;
-  std::string positional_help_;
-  std::string footer_{};
-  size_t width_{76};
-  /// Allow consume unrecognized options
-  /// instead of throwing an error.
-  bool allow_unrecognised_{false};
-  /// Show help for options bonded to positional arguments.
-  bool show_positional_{false};
-  /// Stop parsing at first positional argument.
-  bool stop_on_positional_{false};
-  /// Replace tab with spaces.
-  bool tab_expansion_{false};
-
-  /// Named options.
-  /// Short and long names exist as separate entries but
-  /// point to the same object.
-  option_map options_{};
-  /// List of named positional arguments.
-  positional_list positional_{};
-  std::unordered_set<std::string> positional_set_{};
-  /// Mapping from groups to help options.
-  std::map<std::string, help_group_details> help_{};
-};
-
-class options::option_parser {
   using positional_list_iterator = positional_list::const_iterator;
 
   struct option_data {
@@ -1868,265 +1524,597 @@ private:
   parse_result::parsed_hash_map parsed_{};
 };
 
-inline parse_result options::parse(int argc, const char* const* argv) const {
-  return option_parser(options_, positional_, allow_unrecognised_,
-                       stop_on_positional_)
-    .parse(argc, argv);
-}
+} // namespace detail
 
-inline cxx_string options::format_option(const help_option_details& o) const {
-  const auto& s = o.s;
-  const auto& l = o.l;
+class options;
 
-  cxx_string result = "  ";
+class option {
+public:
+  option(std::string opts,
+         std::string desc,
+         std::shared_ptr<detail::value_base> value = ::cxxopts::value<bool>(),
+         std::string arg_help = {}) noexcept
+    : opts_(std::move(opts))
+    , desc_(std::move(desc))
+    , value_(std::move(value))
+    , arg_help_(std::move(arg_help)) {
+  }
 
-  if (!s.empty()) {
-    result += "-";
-    result += to_local_string(s);
-    if (!l.empty()) {
-      result += ",";
+private:
+  friend class ::cxxopts::options;
+
+  /// Short and long names of the option.
+  const std::string opts_;
+  /// Description of the option.
+  const std::string desc_;
+  const std::shared_ptr<detail::value_base> value_;
+  const std::string arg_help_;
+};
+
+/**
+ * Specification of command line options.
+ */
+class options {
+public:
+  struct help_option_details {
+    std::string s{};
+    std::string l{};
+    cxx_string desc{};
+    std::string default_value{};
+    std::string implicit_value{};
+    std::string arg_help{};
+    bool has_implicit{};
+    bool has_default{};
+    bool is_container{};
+    bool is_boolean{};
+  };
+
+  struct help_group_details {
+    std::string name{};
+    std::vector<help_option_details> options{};
+  };
+
+  class option_adder {
+  public:
+    option_adder(const std::string group, options& options)
+      : group_(std::move(group))
+      , options_(options) {
     }
-  } else {
-    result += "   ";
-  }
 
-  if (!l.empty()) {
-    result += " --";
-    result += to_local_string(l);
-  }
+    option_adder& operator()(const std::string& opts,
+                             const std::string& desc,
+                             const std::shared_ptr<detail::value_base>& value =
+                               ::cxxopts::value<bool>(),
+                             const std::string arg_help = {}) {
+      std::string s;
+      std::string l;
+      if (parse_option_specifier(opts, s, l)) {
+        assert(s.empty() || s.size() == 1);
+        assert(l.empty() || l.size() > 1);
 
-  if (!o.is_boolean) {
-    const auto arg = !o.arg_help.empty() ? to_local_string(o.arg_help) : "arg";
-
-    if (o.has_implicit) {
-      result += " [=";
-      result += arg;
-      result += "(=";
-      result += to_local_string(o.implicit_value);
-      result += ")]";
-    } else {
-      result += " ";
-      result += arg;
-    }
-  }
-
-  return result;
-}
-
-inline cxx_string options::format_description(const help_option_details& o,
-                                              size_t start,
-                                              size_t allowed,
-                                              bool tab_expansion) const {
-  auto desc = o.desc;
-
-  if (o.has_default && (!o.is_boolean || o.default_value != "false")) {
-    if (!o.default_value.empty()) {
-      desc += to_local_string(" (default: " + o.default_value + ")");
-    } else {
-      desc += to_local_string(" (default: \"\")");
-    }
-  }
-
-  cxx_string result;
-
-  if (tab_expansion) {
-    cxx_string desc2;
-    size_t size = 0;
-    for (auto c = std::begin(desc); c != std::end(desc); ++c) {
-      if (*c == '\n') {
-        desc2 += *c;
-        size = 0;
-      } else if (*c == '\t') {
-        auto skip = 8 - size % 8;
-        string_append(desc2, skip, ' ');
-        size += skip;
+        options_.add_option(group_, std::move(s), std::move(l), desc, value,
+                            std::move(arg_help));
       } else {
-        desc2 += *c;
-        ++size;
+        detail::throw_or_mimic<invalid_option_format_error>(opts);
+      }
+      return *this;
+    }
+
+  private:
+    bool parse_option_specifier(const std::string& text,
+                                std::string& s,
+                                std::string& l) const {
+      const char* p = text.c_str();
+      if (*p == 0) {
+        return false;
+      } else {
+        s.clear();
+        l.clear();
+      }
+      // Short option.
+      if (*(p + 1) == 0 || *(p + 1) == ',') {
+        if (*p == '?' || isalnum(*p)) {
+          s = *p;
+          ++p;
+        } else {
+          return false;
+        }
+      }
+      // Skip comma.
+      if (*p == ',') {
+        if (s.empty()) {
+          return false;
+        }
+        ++p;
+      }
+      // Skip spaces.
+      while (*p && *p == ' ') {
+        ++p;
+      }
+      // Valid specifier without long option.
+      if (*p == 0) {
+        return true;
+      } else {
+        l.reserve((text.c_str() + text.size()) - p);
+      }
+      // First char of an option name should be alnum.
+      if (isalnum(*p)) {
+        l += *p;
+        ++p;
+      }
+      for (; *p; ++p) {
+        if (*p == '-' || *p == '_' || isalnum(*p)) {
+          l += *p;
+        } else {
+          return false;
+        }
+      }
+      return l.size() > 1;
+    }
+
+  private:
+    const std::string group_;
+    options& options_;
+  };
+
+public:
+  explicit options(std::string program, std::string help_string = {})
+    : program_(std::move(program))
+    , help_string_(to_local_string(std::move(help_string)))
+    , custom_help_("[OPTION...]")
+    , positional_help_("positional parameters") {
+  }
+
+  /**
+   * Adds list of options to the specific group.
+   */
+  void add_options(const std::string& group,
+                   std::initializer_list<option> opts) {
+    option_adder adder(group, *this);
+    for (const auto& opt : opts) {
+      adder(opt.opts_, opt.desc_, opt.value_, opt.arg_help_);
+    }
+  }
+
+  /**
+   * Adds an option to the specific group.
+   */
+  void add_option(const std::string& group, const option& opt) {
+    add_options(group, {opt});
+  }
+
+  option_adder add_options(std::string group = {}) {
+    return option_adder(std::move(group), *this);
+  }
+
+  options& allow_unrecognised_options(const bool value = true) {
+    allow_unrecognised_ = value;
+    return *this;
+  }
+
+  options& custom_help(std::string help_text) {
+    custom_help_ = std::move(help_text);
+    return *this;
+  }
+
+  options& footer(std::string text) {
+    footer_ = std::move(text);
+    return *this;
+  }
+
+  template <typename... Args>
+  void parse_positional(Args&&... args) {
+    parse_positional(std::vector<std::string>{std::forward<Args>(args)...});
+  }
+
+  template <typename I,
+            typename std::enable_if<
+              !std::is_same<typename std::iterator_traits<I>::value_type,
+                            void>::value>::type>
+  void parse_positional(const I begin, const I end) {
+    parse_positional(std::vector<std::string>(begin, end));
+  }
+
+  void parse_positional(std::vector<std::string> opts) {
+    positional_ = std::move(opts);
+    positional_set_ =
+      std::unordered_set<std::string>(positional_.begin(), positional_.end());
+  }
+
+  options& positional_help(std::string help_text) {
+    positional_help_ = std::move(help_text);
+    return *this;
+  }
+
+  options& set_tab_expansion(bool expansion = true) {
+    tab_expansion_ = expansion;
+    return *this;
+  }
+
+  options& set_width(size_t width) {
+    width_ = width;
+    return *this;
+  }
+
+  options& show_positional_help(const bool value = true) {
+    show_positional_ = value;
+    return *this;
+  }
+
+  /**
+   * Stop parsing at first positional argument.
+   */
+  options& stop_on_positional(const bool value = true) {
+    stop_on_positional_ = value;
+    return *this;
+  }
+
+public:
+  /**
+   * Parses the command line arguments according to the current specification.
+   */
+  parse_result parse(int argc, const char* const* argv) const {
+    return detail::option_parser(options_, positional_, allow_unrecognised_,
+                                 stop_on_positional_)
+      .parse(argc, argv);
+  }
+
+  /**
+   * Generates help for the options.
+   */
+  std::string help(const std::vector<std::string>& help_groups = {}) const {
+    cxx_string result;
+
+    if (!empty(help_string_)) {
+      result += help_string_;
+      result += '\n';
+    }
+
+    result += "usage: ";
+    result += to_local_string(program_);
+    result += " ";
+    result += to_local_string(custom_help_);
+
+    if (!positional_.empty() && !positional_help_.empty()) {
+      result += " ";
+      result += to_local_string(positional_help_);
+    }
+
+    result += "\n\n";
+
+    if (help_groups.empty()) {
+      generate_all_groups_help(result);
+    } else {
+      generate_group_help(result, help_groups);
+    }
+
+    if (!empty(footer_)) {
+      result += "\n";
+      result += to_local_string(footer_);
+    }
+
+    return to_utf8_string(result);
+  }
+
+  /**
+   * Returns list of the defined groups.
+   */
+  std::vector<std::string> groups() const {
+    std::vector<std::string> names;
+
+    names.reserve(help_.size());
+
+    for (auto hi = help_.cbegin(); hi != help_.cend(); ++hi) {
+      names.push_back(hi->first);
+    }
+
+    return names;
+  }
+
+  const help_group_details& group_help(const std::string& group) const {
+    return help_.at(group);
+  }
+
+  const std::string& program() const {
+    return program_;
+  }
+
+private:
+  void add_option(const std::string& group,
+                  std::string s,
+                  std::string l,
+                  std::string desc,
+                  const std::shared_ptr<detail::value_base>& value,
+                  std::string arg_help) {
+    auto string_desc = to_local_string(std::move(desc));
+    auto details = std::make_shared<option_details>(s, l, string_desc, value);
+
+    if (!s.empty()) {
+      add_one_option(s, details);
+    }
+    if (!l.empty()) {
+      add_one_option(l, details);
+    }
+
+    // Add the help details.
+    help_option_details help_opt;
+    help_opt.s = s;
+    help_opt.l = l;
+    help_opt.desc = std::move(string_desc);
+    help_opt.default_value = value->get_default_value();
+    help_opt.implicit_value = value->get_implicit_value();
+    help_opt.arg_help = std::move(arg_help);
+    help_opt.has_implicit = value->has_implicit();
+    help_opt.has_default = value->has_default();
+    help_opt.is_container = value->is_container();
+    help_opt.is_boolean = value->is_boolean();
+    help_[group].options.push_back(std::move(help_opt));
+  }
+
+  void add_one_option(const std::string& name,
+                      const std::shared_ptr<option_details>& details) {
+    const auto in = options_.emplace(name, details);
+
+    if (!in.second) {
+      detail::throw_or_mimic<option_exists_error>(name);
+    }
+  }
+
+  cxx_string format_option(const help_option_details& o) const {
+    const auto& s = o.s;
+    const auto& l = o.l;
+
+    cxx_string result = "  ";
+
+    if (!s.empty()) {
+      result += "-";
+      result += to_local_string(s);
+      if (!l.empty()) {
+        result += ",";
+      }
+    } else {
+      result += "   ";
+    }
+
+    if (!l.empty()) {
+      result += " --";
+      result += to_local_string(l);
+    }
+
+    if (!o.is_boolean) {
+      const auto arg =
+        !o.arg_help.empty() ? to_local_string(o.arg_help) : "arg";
+
+      if (o.has_implicit) {
+        result += " [=";
+        result += arg;
+        result += "(=";
+        result += to_local_string(o.implicit_value);
+        result += ")]";
+      } else {
+        result += " ";
+        result += arg;
       }
     }
-    desc = desc2;
+
+    return result;
   }
 
-  desc += " ";
+  cxx_string format_description(const help_option_details& o,
+                                size_t start,
+                                size_t allowed,
+                                bool tab_expansion) const {
+    auto desc = o.desc;
 
-  auto current = std::begin(desc);
-  auto previous = current;
-  auto startLine = current;
-  auto lastSpace = current;
-
-  auto size = size_t{};
-
-  bool appendNewLine;
-  bool onlyWhiteSpace = true;
-
-  while (current != std::end(desc)) {
-    appendNewLine = false;
-
-    if (std::isblank(*previous)) {
-      lastSpace = current;
+    if (o.has_default && (!o.is_boolean || o.default_value != "false")) {
+      if (!o.default_value.empty()) {
+        desc += to_local_string(" (default: " + o.default_value + ")");
+      } else {
+        desc += to_local_string(" (default: \"\")");
+      }
     }
 
-    if (!std::isblank(*current)) {
-      onlyWhiteSpace = false;
+    cxx_string result;
+
+    if (tab_expansion) {
+      cxx_string desc2;
+      size_t size = 0;
+      for (auto c = std::begin(desc); c != std::end(desc); ++c) {
+        if (*c == '\n') {
+          desc2 += *c;
+          size = 0;
+        } else if (*c == '\t') {
+          auto skip = 8 - size % 8;
+          string_append(desc2, skip, ' ');
+          size += skip;
+        } else {
+          desc2 += *c;
+          ++size;
+        }
+      }
+      desc = desc2;
     }
 
-    while (*current == '\n') {
+    desc += " ";
+
+    auto current = std::begin(desc);
+    auto previous = current;
+    auto startLine = current;
+    auto lastSpace = current;
+
+    auto size = size_t{};
+
+    bool appendNewLine;
+    bool onlyWhiteSpace = true;
+
+    while (current != std::end(desc)) {
+      appendNewLine = false;
+
+      if (std::isblank(*previous)) {
+        lastSpace = current;
+      }
+
+      if (!std::isblank(*current)) {
+        onlyWhiteSpace = false;
+      }
+
+      while (*current == '\n') {
+        previous = current;
+        ++current;
+        appendNewLine = true;
+      }
+
+      if (!appendNewLine && size >= allowed) {
+        if (lastSpace != startLine) {
+          current = lastSpace;
+          previous = current;
+        }
+        appendNewLine = true;
+      }
+
+      if (appendNewLine) {
+        string_append(result, startLine, current);
+        startLine = current;
+        lastSpace = current;
+
+        if (*previous != '\n') {
+          string_append(result, "\n");
+        }
+
+        string_append(result, start, ' ');
+
+        if (*previous != '\n') {
+          string_append(result, lastSpace, current);
+        }
+
+        onlyWhiteSpace = true;
+        size = 0;
+      }
+
       previous = current;
       ++current;
-      appendNewLine = true;
+      ++size;
     }
 
-    if (!appendNewLine && size >= allowed) {
-      if (lastSpace != startLine) {
-        current = lastSpace;
-        previous = current;
-      }
-      appendNewLine = true;
+    // append whatever is left but ignore whitespace
+    if (!onlyWhiteSpace) {
+      string_append(result, startLine, previous);
     }
 
-    if (appendNewLine) {
-      string_append(result, startLine, current);
-      startLine = current;
-      lastSpace = current;
-
-      if (*previous != '\n') {
-        string_append(result, "\n");
-      }
-
-      string_append(result, start, ' ');
-
-      if (*previous != '\n') {
-        string_append(result, lastSpace, current);
-      }
-
-      onlyWhiteSpace = true;
-      size = 0;
-    }
-
-    previous = current;
-    ++current;
-    ++size;
+    return result;
   }
 
-  // append whatever is left but ignore whitespace
-  if (!onlyWhiteSpace) {
-    string_append(result, startLine, previous);
-  }
+  cxx_string help_one_group(const std::string& group) const {
+    using option_help = std::vector<std::pair<cxx_string, cxx_string>>;
 
-  return result;
-}
-
-inline void options::generate_group_help(
-  cxx_string& result, const std::vector<std::string>& print_groups) const {
-  for (size_t i = 0; i != print_groups.size(); ++i) {
-    const cxx_string& group_help_text = help_one_group(print_groups[i]);
-    if (empty(group_help_text)) {
-      continue;
+    const auto gi = help_.find(group);
+    if (gi == help_.end()) {
+      return cxx_string();
     }
-    result += group_help_text;
-    if (i < print_groups.size() - 1) {
+
+    option_help format;
+    size_t longest = 0;
+    cxx_string result;
+
+    if (!group.empty()) {
+      result += to_local_string(group);
       result += '\n';
     }
-  }
-}
 
-inline cxx_string options::help_one_group(const std::string& g) const {
-  using option_help = std::vector<std::pair<cxx_string, cxx_string>>;
+    for (const auto& o : gi->second.options) {
+      if (!show_positional_ &&
+          positional_set_.find(o.l) != positional_set_.end()) {
+        continue;
+      }
 
-  auto group = help_.find(g);
-  if (group == help_.end()) {
-    return cxx_string();
-  }
+      const auto& s = format_option(o);
+      longest = std::max(longest, string_length(s));
+      format.push_back(std::make_pair(s, cxx_string()));
+    }
+    longest = std::min(longest, OPTION_LONGEST);
 
-  option_help format;
-  size_t longest = 0;
-  cxx_string result;
-
-  if (!g.empty()) {
-    result += to_local_string(g);
-    result += '\n';
-  }
-
-  for (const auto& o : group->second.options) {
-    if (!show_positional_ && positional_set_.find(o.l) != positional_set_.end())
-    {
-      continue;
+    // widest allowed description -- min 10 chars for helptext/line
+    size_t allowed = 10;
+    if (width_ > allowed + longest + OPTION_DESC_GAP) {
+      allowed = width_ - longest - OPTION_DESC_GAP;
     }
 
-    const auto& s = format_option(o);
-    longest = std::max(longest, string_length(s));
-    format.push_back(std::make_pair(s, cxx_string()));
-  }
-  longest = std::min(longest, OPTION_LONGEST);
+    auto fiter = format.begin();
+    for (const auto& o : gi->second.options) {
+      if (!show_positional_ &&
+          positional_set_.find(o.l) != positional_set_.end()) {
+        continue;
+      }
 
-  // widest allowed description -- min 10 chars for helptext/line
-  size_t allowed = 10;
-  if (width_ > allowed + longest + OPTION_DESC_GAP) {
-    allowed = width_ - longest - OPTION_DESC_GAP;
-  }
+      const auto& d = format_description(o, longest + OPTION_DESC_GAP, allowed,
+                                         tab_expansion_);
 
-  auto fiter = format.begin();
-  for (const auto& o : group->second.options) {
-    if (!show_positional_ && positional_set_.find(o.l) != positional_set_.end())
-    {
-      continue;
-    }
-
-    const auto& d =
-      format_description(o, longest + OPTION_DESC_GAP, allowed, tab_expansion_);
-
-    result += fiter->first;
-    if (string_length(fiter->first) > longest) {
+      result += fiter->first;
+      if (string_length(fiter->first) > longest) {
+        result += '\n';
+        result += to_local_string(std::string(longest + OPTION_DESC_GAP, ' '));
+      } else {
+        result += to_local_string(std::string(
+          longest + OPTION_DESC_GAP - string_length(fiter->first), ' '));
+      }
+      result += d;
       result += '\n';
-      result += to_local_string(std::string(longest + OPTION_DESC_GAP, ' '));
-    } else {
-      result += to_local_string(std::string(
-        longest + OPTION_DESC_GAP - string_length(fiter->first), ' '));
+
+      ++fiter;
     }
-    result += d;
-    result += '\n';
 
-    ++fiter;
+    return result;
   }
 
-  return result;
-}
-
-inline std::string options::help(
-  const std::vector<std::string>& help_groups) const {
-  cxx_string result;
-
-  if (!empty(help_string_)) {
-    result += help_string_;
-    result += '\n';
+  void generate_group_help(cxx_string& result,
+                           const std::vector<std::string>& print_groups) const {
+    for (size_t i = 0; i != print_groups.size(); ++i) {
+      const cxx_string& group_help_text = help_one_group(print_groups[i]);
+      if (empty(group_help_text)) {
+        continue;
+      }
+      result += group_help_text;
+      if (i < print_groups.size() - 1) {
+        result += '\n';
+      }
+    }
   }
 
-  result += "usage: ";
-  result += to_local_string(program_);
-  result += " ";
-  result += to_local_string(custom_help_);
-
-  if (!positional_.empty() && !positional_help_.empty()) {
-    result += " ";
-    result += to_local_string(positional_help_);
+  void generate_all_groups_help(cxx_string& result) const {
+    generate_group_help(result, groups());
   }
 
-  result += "\n\n";
+private:
+  using option_map =
+    std::unordered_map<std::string, std::shared_ptr<option_details>>;
+  using positional_list = std::vector<std::string>;
 
-  if (help_groups.empty()) {
-    generate_all_groups_help(result);
-  } else {
-    generate_group_help(result, help_groups);
-  }
+  std::string program_;
+  cxx_string help_string_;
+  std::string custom_help_;
+  std::string positional_help_;
+  std::string footer_{};
+  size_t width_{76};
+  /// Allow consume unrecognized options
+  /// instead of throwing an error.
+  bool allow_unrecognised_{false};
+  /// Show help for options bonded to positional arguments.
+  bool show_positional_{false};
+  /// Stop parsing at first positional argument.
+  bool stop_on_positional_{false};
+  /// Replace tab with spaces.
+  bool tab_expansion_{false};
 
-  if (!empty(footer_)) {
-    result += "\n";
-    result += to_local_string(footer_);
-  }
-
-  return to_utf8_string(result);
-}
+  /// Named options.
+  /// Short and long names exist as separate entries but
+  /// point to the same object.
+  option_map options_{};
+  /// List of named positional arguments.
+  positional_list positional_{};
+  std::unordered_set<std::string> positional_set_{};
+  /// Mapping from groups to help options.
+  std::map<std::string, help_group_details> help_{};
+};
 
 } // namespace cxxopts
 
