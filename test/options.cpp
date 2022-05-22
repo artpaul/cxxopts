@@ -118,7 +118,6 @@ TEST_CASE("Parse ingeger", "[integer]") {
     std::numeric_limits<uint64_t>::max()));
 }
 
-
 TEST_CASE("Parse invalid ingeger", "[integer]") {
   using namespace cxxopts::detail;
 

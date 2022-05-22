@@ -82,7 +82,7 @@ THE SOFTWARE.
 
 #define CXXOPTS__VERSION_MAJOR 5
 #define CXXOPTS__VERSION_MINOR 2
-#define CXXOPTS__VERSION_PATCH 0
+#define CXXOPTS__VERSION_PATCH 1
 
 namespace cxxopts {
 
@@ -1745,7 +1745,7 @@ private:
       return false;
     }
 
-    auto check_name = [&](const std::string& opt) {
+    auto check_name = [this](const std::string& opt) {
       return options_.find(opt) != options_.end();
     };
     // Check that the argument does not match any
@@ -1881,7 +1881,8 @@ inline cxx_string options::format_option(const help_option_details& o) const {
   cxx_string result = "  ";
 
   if (!s.empty()) {
-    result += "-" + to_local_string(s);
+    result += "-";
+    result += to_local_string(s);
     if (!l.empty()) {
       result += ",";
     }
@@ -1890,16 +1891,22 @@ inline cxx_string options::format_option(const help_option_details& o) const {
   }
 
   if (!l.empty()) {
-    result += " --" + to_local_string(l);
+    result += " --";
+    result += to_local_string(l);
   }
 
-  auto arg = !o.arg_help.empty() ? to_local_string(o.arg_help) : "arg";
-
   if (!o.is_boolean) {
+    const auto arg = !o.arg_help.empty() ? to_local_string(o.arg_help) : "arg";
+
     if (o.has_implicit) {
-      result += " [=" + arg + "(=" + to_local_string(o.implicit_value) + ")]";
+      result += " [=";
+      result += arg;
+      result += "(=";
+      result += to_local_string(o.implicit_value);
+      result += ")]";
     } else {
-      result += " " + arg;
+      result += " ";
+      result += arg;
     }
   }
 
@@ -2047,7 +2054,7 @@ inline cxx_string options::help_one_group(const std::string& g) const {
       continue;
     }
 
-    auto s = format_option(o);
+    const auto& s = format_option(o);
     longest = std::max(longest, string_length(s));
     format.push_back(std::make_pair(s, cxx_string()));
   }
@@ -2066,7 +2073,7 @@ inline cxx_string options::help_one_group(const std::string& g) const {
       continue;
     }
 
-    auto d =
+    const auto& d =
       format_description(o, longest + OPTION_DESC_GAP, allowed, tab_expansion_);
 
     result += fiter->first;
