@@ -26,6 +26,15 @@ THE SOFTWARE.
 
 #include "cxxopts.hpp"
 
+static const std::string kVeryLongString =
+    "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod "
+    "tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim "
+    "veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea "
+    "commodo consequat. Duis aute irure dolor in reprehenderit in voluptate "
+    "velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint "
+    "occaecat cupidatat non proident, sunt in culpa qui officia deserunt "
+    "mollit anim id est laborum.";
+
 void
 parse(int argc, const char* argv[])
 {
@@ -74,7 +83,7 @@ parse(int argc, const char* argv[])
       ("d,drop", "drop", cxxopts::value<std::vector<std::string>>());
 
     options.parse_positional({"input", "output", "positional"});
-    options.footer("Any final description.\nCan be multiline.");
+    options.footer("Any final description.\n\n" + kVeryLongString);
 
     auto result = options.parse(argc, argv);
 

@@ -82,7 +82,7 @@ THE SOFTWARE.
 
 #define CXXOPTS__VERSION_MAJOR 5
 #define CXXOPTS__VERSION_MINOR 2
-#define CXXOPTS__VERSION_PATCH 1
+#define CXXOPTS__VERSION_PATCH 2
 
 namespace cxxopts {
 
@@ -101,6 +101,7 @@ static const std::string RQUOTE("’");
 
 static constexpr size_t OPTION_LONGEST = 30;
 static constexpr size_t OPTION_DESC_GAP = 2;
+static constexpr size_t OPTION_TAB_SIZE = 8;
 
 #ifdef CXXOPTS_USE_UNICODE
 using cxx_string = icu::UnicodeString;
@@ -1766,7 +1767,7 @@ public:
     cxx_string result;
 
     if (!empty(help_string_)) {
-      result += help_string_;
+      result += wrap_string(help_string_ + " ", 0, width_);
       result += '\n';
     }
 
@@ -1790,7 +1791,7 @@ public:
 
     if (!empty(footer_)) {
       result += "\n";
-      result += to_local_string(footer_);
+      result += wrap_string(to_local_string(footer_ + " "), 0, width_);
     }
 
     return to_utf8_string(result);
@@ -1914,100 +1915,20 @@ private:
       }
     }
 
-    cxx_string result;
-
     if (tab_expansion) {
-      cxx_string desc2;
-      size_t size = 0;
-      for (auto c = std::begin(desc); c != std::end(desc); ++c) {
-        if (*c == '\n') {
-          desc2 += *c;
-          size = 0;
-        } else if (*c == '\t') {
-          auto skip = 8 - size % 8;
-          string_append(desc2, skip, ' ');
-          size += skip;
-        } else {
-          desc2 += *c;
-          ++size;
-        }
-      }
-      desc = desc2;
+      desc = expand_tab_character(desc);
     }
 
     desc += " ";
 
-    auto current = std::begin(desc);
-    auto previous = current;
-    auto startLine = current;
-    auto lastSpace = current;
-
-    auto size = size_t{};
-
-    bool appendNewLine;
-    bool onlyWhiteSpace = true;
-
-    while (current != std::end(desc)) {
-      appendNewLine = false;
-
-      if (std::isblank(*previous)) {
-        lastSpace = current;
-      }
-
-      if (!std::isblank(*current)) {
-        onlyWhiteSpace = false;
-      }
-
-      while (*current == '\n') {
-        previous = current;
-        ++current;
-        appendNewLine = true;
-      }
-
-      if (!appendNewLine && size >= allowed) {
-        if (lastSpace != startLine) {
-          current = lastSpace;
-          previous = current;
-        }
-        appendNewLine = true;
-      }
-
-      if (appendNewLine) {
-        string_append(result, startLine, current);
-        startLine = current;
-        lastSpace = current;
-
-        if (*previous != '\n') {
-          string_append(result, "\n");
-        }
-
-        string_append(result, start, ' ');
-
-        if (*previous != '\n') {
-          string_append(result, lastSpace, current);
-        }
-
-        onlyWhiteSpace = true;
-        size = 0;
-      }
-
-      previous = current;
-      ++current;
-      ++size;
-    }
-
-    // append whatever is left but ignore whitespace
-    if (!onlyWhiteSpace) {
-      string_append(result, startLine, previous);
-    }
-
-    return result;
+    return wrap_string(desc, start, allowed);
   }
 
-  cxx_string help_one_group(const std::string& group) const {
-    using option_help = std::vector<std::pair<cxx_string, cxx_string>>;
+  cxx_string help_one_group(const std::string& group_name) const {
+    using option_help =
+      std::vector<std::pair<cxx_string, const help_option_details*>>;
 
-    const auto gi = help_.find(group);
+    const auto gi = help_.find(group_name);
     if (gi == help_.end()) {
       return cxx_string();
     }
@@ -2016,10 +1937,13 @@ private:
     size_t longest = 0;
     cxx_string result;
 
-    if (!group.empty()) {
-      result += to_local_string(group);
+    if (!group_name.empty()) {
+      result += to_local_string(group_name);
       result += '\n';
     }
+    // Preallocate buffer for list of options.
+    format.reserve(gi->second.options.size() -
+                   (show_positional_ ? 0 : positional_set_.size()));
 
     for (const auto& o : gi->second.options) {
       if (!show_positional_ &&
@@ -2027,9 +1951,9 @@ private:
         continue;
       }
 
-      const auto& s = format_option(o);
+      cxx_string s = format_option(o);
       longest = std::max(longest, string_length(s));
-      format.push_back(std::make_pair(s, cxx_string()));
+      format.emplace_back(std::move(s), &o);
     }
     longest = std::min(longest, OPTION_LONGEST);
 
@@ -2039,28 +1963,20 @@ private:
       allowed = width_ - longest - OPTION_DESC_GAP;
     }
 
-    auto fiter = format.begin();
-    for (const auto& o : gi->second.options) {
-      if (!show_positional_ &&
-          positional_set_.find(o.l) != positional_set_.end()) {
-        continue;
-      }
+    for (auto fi = std::begin(format); fi != std::end(format); ++fi) {
+      const auto& d = format_description(*fi->second, longest + OPTION_DESC_GAP,
+                                         allowed, tab_expansion_);
 
-      const auto& d = format_description(o, longest + OPTION_DESC_GAP, allowed,
-                                         tab_expansion_);
-
-      result += fiter->first;
-      if (string_length(fiter->first) > longest) {
+      result += fi->first;
+      if (string_length(fi->first) > longest) {
         result += '\n';
         result += to_local_string(std::string(longest + OPTION_DESC_GAP, ' '));
       } else {
         result += to_local_string(std::string(
-          longest + OPTION_DESC_GAP - string_length(fiter->first), ' '));
+          longest + OPTION_DESC_GAP - string_length(fi->first), ' '));
       }
       result += d;
       result += '\n';
-
-      ++fiter;
     }
 
     return result;
@@ -2082,6 +1998,101 @@ private:
 
   void generate_all_groups_help(cxx_string& result) const {
     generate_group_help(result, groups());
+  }
+
+  cxx_string expand_tab_character(const cxx_string& text) const {
+    cxx_string result;
+    cxx_string::const_iterator pi = std::begin(text);
+    size_t size = 0;
+    // Preallocate result buffer.
+    result.reserve(text.size());
+    // Process source string.
+    for (auto ci = std::begin(text); ci != std::end(text); ++ci) {
+      if (*ci == '\n') {
+        size = 0;
+      } else if (*ci == '\t') {
+        const size_t skip = OPTION_TAB_SIZE - size % OPTION_TAB_SIZE;
+        result.append(pi, ci);
+        string_append(result, skip, ' ');
+        size += skip;
+        pi = ci + 1;
+      } else {
+        ++size;
+      }
+    }
+    // Append rest of the source string.
+    result.append(pi, std::end(text));
+
+    return result;
+  }
+
+  cxx_string wrap_string(const cxx_string& desc,
+                         size_t start,
+                         size_t allowed) const {
+    cxx_string result;
+    auto current = std::begin(desc);
+    auto previous = current;
+    auto start_line = current;
+    auto last_space = current;
+
+    auto size = size_t{};
+
+    bool only_whitespace = true;
+
+    for (; current != std::end(desc); ++current) {
+      bool append_new_line = false;
+
+      if (std::isblank(*previous)) {
+        last_space = current;
+      }
+
+      if (!std::isblank(*current)) {
+        only_whitespace = false;
+      }
+
+      while (*current == '\n') {
+        previous = current;
+        ++current;
+        append_new_line = true;
+      }
+
+      if (!append_new_line && size >= allowed) {
+        if (last_space != start_line) {
+          current = last_space;
+          previous = current;
+        }
+        append_new_line = true;
+      }
+
+      if (append_new_line) {
+        string_append(result, start_line, current);
+        start_line = current;
+        last_space = current;
+
+        if (*previous != '\n') {
+          string_append(result, "\n");
+        }
+
+        string_append(result, start, ' ');
+
+        if (*previous != '\n') {
+          string_append(result, last_space, current);
+        }
+
+        only_whitespace = true;
+        size = 0;
+      }
+
+      previous = current;
+      ++size;
+    }
+
+    // append whatever is left but ignore whitespace
+    if (!only_whitespace) {
+      string_append(result, start_line, previous);
+    }
+
+    return result;
   }
 
 private:

@@ -1083,7 +1083,7 @@ TEST_CASE("Custom parser", "[parser]") {
 
   const Argv argv({"test", "--foo", "5=4"});
   const auto result = options.parse(argv.argc(), argv.argv());
-  CHECK(result.count("foo") == 1);
+  REQUIRE(result.count("foo") == 1);
   CHECK(result["foo"].as<char_pair>().first == '5');
   CHECK(result["foo"].as<char_pair>().second == '4');
 }
@@ -1098,8 +1098,8 @@ TEST_CASE("Custom delimiter", "[parser]") {
   const auto result = options.parse(argv.argc(), argv.argv());
   const auto tests = result["test"].as<std::vector<std::string>>();
 
-  CHECK(result.count("test") == 2);
-  CHECK(tests.size() == 4);
+  REQUIRE(result.count("test") == 2);
+  REQUIRE(tests.size() == 4);
   CHECK(tests[0] == "a");
   CHECK(tests[1] == "b");
   CHECK(tests[2] == "c");
@@ -1109,17 +1109,27 @@ TEST_CASE("Custom delimiter", "[parser]") {
 TEST_CASE("Vector of vector", "[parser]") {
   cxxopts::options options("parser", " - test vector of vector");
   options.add_options()
-    ("test", "vector input", cxxopts::value<std::vector<std::vector<float>>>());
+    ("test", "vector input", cxxopts::value<std::vector<std::vector<float>>>())
+    ("I", "list of list", cxxopts::value<std::vector<std::vector<int>>>());
 
-  const Argv argv({"test", "--test=10.0", "--test=10.0,10.0", "--test=10.0,10.0,10.0"});
+  const Argv argv({
+    "test", "--test=10.0", "--test=10.0,10.0", "--test=10.0,10.0,10.0",
+    "-I", "1,3,224,224", "-I", "1,10"}
+  );
   const auto result = options.parse(argv.argc(), argv.argv());
   const auto tests = result["test"].as<std::vector<std::vector<float>>>();
+  const auto ints = result["I"].as<std::vector<std::vector<int>>>();
 
-  CHECK(result.count("test") == 3);
-  CHECK(tests.size() == 3);
+  REQUIRE(result.count("test") == 3);
+  REQUIRE(tests.size() == 3);
   CHECK(tests[0].size() == 1);
   CHECK(tests[1].size() == 2);
   CHECK(tests[2].size() == 3);
+
+  REQUIRE(result.count("I") == 2);
+  REQUIRE(ints.size() == 2);
+  CHECK(ints[0].size() == 4);
+  CHECK(ints[1].size() == 2);
 }
 
 TEST_CASE("Long and short options format", "[options]") {
