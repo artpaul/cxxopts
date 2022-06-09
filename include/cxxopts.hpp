@@ -1767,7 +1767,7 @@ public:
     cxx_string result;
 
     if (!empty(help_string_)) {
-      result += wrap_string(help_string_ + " ", 0, width_);
+      result += wrap_string(help_string_, 0, width_);
       result += '\n';
     }
 
@@ -1791,7 +1791,7 @@ public:
 
     if (!empty(footer_)) {
       result += "\n";
-      result += wrap_string(to_local_string(footer_ + " "), 0, width_);
+      result += wrap_string(to_local_string(footer_), 0, width_);
     }
 
     return to_utf8_string(result);
@@ -1905,7 +1905,7 @@ private:
                                 size_t start,
                                 size_t allowed,
                                 bool tab_expansion) const {
-    auto desc = o.desc;
+    cxx_string desc = o.desc;
 
     if (o.has_default && (!o.is_boolean || o.default_value != "false")) {
       if (!o.default_value.empty()) {
@@ -1919,9 +1919,7 @@ private:
       desc = expand_tab_character(desc);
     }
 
-    desc += " ";
-
-    return wrap_string(desc, start, allowed);
+    return wrap_string(std::move(desc), start, allowed);
   }
 
   cxx_string help_one_group(const std::string& group_name) const {
@@ -2027,17 +2025,23 @@ private:
   }
 
   cxx_string wrap_string(const cxx_string& desc,
-                         size_t start,
-                         size_t allowed) const {
+                         const size_t start,
+                         const size_t allowed) const {
     cxx_string result;
+
+    // Nothing to wrap for empty string.
+    if (std::begin(desc) == std::end(desc)) {
+      return result;
+    }
+
     auto current = std::begin(desc);
     auto previous = current;
     auto start_line = current;
     auto last_space = current;
-
     auto size = size_t{};
-
     bool only_whitespace = true;
+
+    result.reserve(desc.size());
 
     for (; current != std::end(desc); ++current) {
       bool append_new_line = false;
@@ -2049,11 +2053,13 @@ private:
       if (!std::isblank(*current)) {
         only_whitespace = false;
       }
-
-      while (*current == '\n') {
-        previous = current;
-        ++current;
+      // Skip all line feed characters.
+      if (*current == '\n') {
         append_new_line = true;
+        do {
+          previous = current;
+          ++current;
+        } while (current != std::end(desc) && *current == '\n');
       }
 
       if (!append_new_line && size >= allowed) {
@@ -2083,13 +2089,17 @@ private:
         size = 0;
       }
 
+      if (current == std::end(desc)) {
+        break;
+      }
+
       previous = current;
       ++size;
     }
 
-    // append whatever is left but ignore whitespace
+    // Append whatever is left but ignore whitespace.
     if (!only_whitespace) {
-      string_append(result, start_line, previous);
+      string_append(result, start_line, current);
     }
 
     return result;
