@@ -710,17 +710,17 @@ public:
   }
 
   /** Returns default value. */
-  std::string get_default_value() const {
+  const std::string& get_default_value() const {
     return default_value_;
   }
 
   /** Returns env variable. */
-  std::string get_env_var() const {
+  const std::string& get_env_var() const {
     return env_var_;
   }
 
   /** Returns implicit value. */
-  std::string get_implicit_value() const {
+  const std::string& get_implicit_value() const {
     return implicit_value_;
   }
 
@@ -924,13 +924,20 @@ class option_details {
 public:
   option_details(std::string short_name,
                  std::string long_name,
+                 std::string arg_help,
                  cxx_string desc,
                  std::shared_ptr<detail::value_base> val)
     : short_(std::move(short_name))
     , long_(std::move(long_name))
+    , arg_help_(std::move(arg_help))
     , desc_(std::move(desc))
     , hash_(std::hash<std::string>{}(long_ + short_))
     , value_(std::move(val)) {
+  }
+
+  CXXOPTS_NODISCARD
+  const std::string& arg_help() const {
+    return arg_help_;
   }
 
   CXXOPTS_NODISCARD
@@ -962,15 +969,46 @@ public:
     return hash_;
   }
 
+  CXXOPTS_NODISCARD
+  const std::string& default_value() const {
+    return value_->get_default_value();
+  }
+
+  CXXOPTS_NODISCARD
+  const std::string& implicit_value() const {
+    return value_->get_implicit_value();
+  }
+
+  CXXOPTS_NODISCARD
+  bool has_default() const noexcept {
+    return value_->has_default();
+  }
+
+  CXXOPTS_NODISCARD
+  bool has_implicit() const noexcept {
+    return value_->has_implicit();
+  }
+
+  CXXOPTS_NODISCARD
+  bool is_container() const noexcept {
+    return value_->is_container();
+  }
+
+  CXXOPTS_NODISCARD
+  bool is_boolean() const noexcept {
+    return value_->is_boolean();
+  }
+
 private:
   /// Short name of the option.
-  const std::string short_;
+  std::string short_;
   /// Long name of the option.
-  const std::string long_;
+  std::string long_;
+  std::string arg_help_;
   /// Description of the option.
-  const cxx_string desc_;
-  const size_t hash_;
-  const std::shared_ptr<detail::value_base> value_;
+  cxx_string desc_;
+  size_t hash_;
+  std::shared_ptr<detail::value_base> value_;
 };
 
 /**
@@ -1021,32 +1059,31 @@ public:
   /**
    * Parses option value from the given text.
    */
-  void parse(const std::shared_ptr<option_details>& details,
-             const std::string& text) {
+  void parse(const option_details& details, const std::string& text) {
     ensure_value(details);
     ++count_;
     value_->parse(text);
-    long_name_ = details->long_name();
+    long_name_ = details.long_name();
   }
 
   /**
    * Parses option value from the default value.
    */
-  void parse_default(const std::shared_ptr<option_details>& details) {
+  void parse_default(const option_details& details) {
     ensure_value(details);
     default_ = true;
-    long_name_ = details->long_name();
+    long_name_ = details.long_name();
     value_->parse();
   }
 
-  void parse_no_value(const std::shared_ptr<option_details>& details) {
-    long_name_ = details->long_name();
+  void parse_no_value(const option_details& details) {
+    long_name_ = details.long_name();
   }
 
 private:
-  void ensure_value(const std::shared_ptr<option_details>& details) {
+  void ensure_value(const option_details& details) {
     if (value_ == nullptr) {
-      value_ = details->value();
+      value_ = details.value();
     }
   }
 
@@ -1279,8 +1316,8 @@ public:
             if (i + 1 == seq.size()) {
               // It must be the last argument.
               checked_parse_arg(argc, argv, current, opt, name);
-            } else if (opt->value()->has_implicit()) {
-              parse_option(opt, opt->value()->get_implicit_value());
+            } else if (opt->has_implicit()) {
+              parse_option(opt, opt->implicit_value());
             } else {
               parse_option(opt, seq.substr(i + 1));
               break;
@@ -1330,15 +1367,15 @@ public:
       // Try to setup env value.
       if (value->has_env()) {
         if (const char* env = std::getenv(value->get_env_var().c_str())) {
-          store.parse(detail, std::string(env));
+          store.parse(*detail, std::string(env));
           continue;
         }
       }
       // Try to setup default value.
       if (value->has_default()) {
-        store.parse_default(detail);
+        store.parse_default(*detail);
       } else {
-        store.parse_no_value(detail);
+        store.parse_no_value(*detail);
       }
     }
 
@@ -1422,8 +1459,8 @@ private:
                          const std::shared_ptr<option_details>& value,
                          const std::string& name) {
     auto parse_implicit = [&]() {
-      if (value->value()->has_implicit()) {
-        parse_option(value, value->value()->get_implicit_value());
+      if (value->has_implicit()) {
+        parse_option(value, value->implicit_value());
       } else {
         detail::throw_or_mimic<missing_argument_error>(name);
       }
@@ -1503,16 +1540,8 @@ private:
 
   void parse_option(const std::shared_ptr<option_details>& details,
                     const std::string& arg) {
-    parsed_[details->hash()].parse(details, arg);
+    parsed_[details->hash()].parse(*details, arg);
     sequential_.emplace_back(details->canonical_name(), arg);
-  }
-
-  void parse_default(const std::shared_ptr<option_details>& details) {
-    parsed_[details->hash()].parse_default(details);
-  }
-
-  void parse_no_value(const std::shared_ptr<option_details>& details) {
-    parsed_[details->hash()].parse_no_value(details);
   }
 
 private:
@@ -1557,22 +1586,9 @@ private:
  */
 class options {
 public:
-  struct help_option_details {
-    std::string s{};
-    std::string l{};
-    cxx_string desc{};
-    std::string default_value{};
-    std::string implicit_value{};
-    std::string arg_help{};
-    bool has_implicit{};
-    bool has_default{};
-    bool is_container{};
-    bool is_boolean{};
-  };
-
   struct help_group_details {
     std::string name{};
-    std::vector<help_option_details> options{};
+    std::vector<std::shared_ptr<option_details>> options{};
   };
 
   class option_adder {
@@ -1822,13 +1838,13 @@ public:
 
 private:
   void add_option(const std::string& group,
-                  std::string s,
-                  std::string l,
+                  const std::string& s,
+                  const std::string& l,
                   std::string desc,
                   const std::shared_ptr<detail::value_base>& value,
                   std::string arg_help) {
-    auto string_desc = to_local_string(std::move(desc));
-    auto details = std::make_shared<option_details>(s, l, string_desc, value);
+    auto details = std::make_shared<option_details>(
+      s, l, std::move(arg_help), to_local_string(std::move(desc)), value);
 
     if (!s.empty()) {
       add_one_option(s, details);
@@ -1838,18 +1854,7 @@ private:
     }
 
     // Add the help details.
-    help_option_details help_opt;
-    help_opt.s = s;
-    help_opt.l = l;
-    help_opt.desc = std::move(string_desc);
-    help_opt.default_value = value->get_default_value();
-    help_opt.implicit_value = value->get_implicit_value();
-    help_opt.arg_help = std::move(arg_help);
-    help_opt.has_implicit = value->has_implicit();
-    help_opt.has_default = value->has_default();
-    help_opt.is_container = value->is_container();
-    help_opt.is_boolean = value->is_boolean();
-    help_[group].options.push_back(std::move(help_opt));
+    help_[group].options.push_back(std::move(details));
   }
 
   void add_one_option(const std::string& name,
@@ -1861,9 +1866,9 @@ private:
     }
   }
 
-  cxx_string format_option(const help_option_details& o) const {
-    const auto& s = o.s;
-    const auto& l = o.l;
+  cxx_string format_option(const option_details& o) const {
+    const auto& s = o.short_name();
+    const auto& l = o.long_name();
 
     cxx_string result = "  ";
 
@@ -1882,15 +1887,15 @@ private:
       result += to_local_string(l);
     }
 
-    if (!o.is_boolean) {
+    if (!o.is_boolean()) {
       const auto arg =
-        !o.arg_help.empty() ? to_local_string(o.arg_help) : "arg";
+        !o.arg_help().empty() ? to_local_string(o.arg_help()) : "arg";
 
-      if (o.has_implicit) {
+      if (o.has_implicit()) {
         result += " [=";
         result += arg;
         result += "(=";
-        result += to_local_string(o.implicit_value);
+        result += to_local_string(o.implicit_value());
         result += ")]";
       } else {
         result += " ";
@@ -1901,15 +1906,15 @@ private:
     return result;
   }
 
-  cxx_string format_description(const help_option_details& o,
+  cxx_string format_description(const option_details& o,
                                 size_t start,
                                 size_t allowed,
                                 bool tab_expansion) const {
-    cxx_string desc = o.desc;
+    cxx_string desc = o.description();
 
-    if (o.has_default && (!o.is_boolean || o.default_value != "false")) {
-      if (!o.default_value.empty()) {
-        desc += to_local_string(" (default: " + o.default_value + ")");
+    if (o.has_default() && (!o.is_boolean() || o.default_value() != "false")) {
+      if (!o.default_value().empty()) {
+        desc += to_local_string(" (default: " + o.default_value() + ")");
       } else {
         desc += to_local_string(" (default: \"\")");
       }
@@ -1924,7 +1929,7 @@ private:
 
   cxx_string help_one_group(const std::string& group_name) const {
     using option_help =
-      std::vector<std::pair<cxx_string, const help_option_details*>>;
+      std::vector<std::pair<cxx_string, const option_details*>>;
 
     const auto gi = help_.find(group_name);
     if (gi == help_.end()) {
@@ -1945,13 +1950,14 @@ private:
 
     for (const auto& o : gi->second.options) {
       if (!show_positional_ &&
-          positional_set_.find(o.l) != positional_set_.end()) {
+          positional_set_.find(o->long_name()) != positional_set_.end())
+      {
         continue;
       }
 
-      cxx_string s = format_option(o);
+      cxx_string s = format_option(*o);
       longest = std::max(longest, string_length(s));
-      format.emplace_back(std::move(s), &o);
+      format.emplace_back(std::move(s), o.get());
     }
     longest = std::min(longest, OPTION_LONGEST);
 
