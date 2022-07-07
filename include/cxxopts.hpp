@@ -1,7 +1,7 @@
 /*
 
 Copyright (c) 2014, 2015, 2016, 2017 Jarryd Beck
-Copyright (c) 2021 Pavel Artemkin
+Copyright (c) 2021 - 2022 Pavel Artemkin
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -82,7 +82,7 @@ THE SOFTWARE.
 
 #define CXXOPTS__VERSION_MAJOR 5
 #define CXXOPTS__VERSION_MINOR 2
-#define CXXOPTS__VERSION_PATCH 2
+#define CXXOPTS__VERSION_PATCH 3
 
 namespace cxxopts {
 
@@ -684,8 +684,8 @@ namespace detail {
 // want to silence it: warning: base class 'class
 // std::enable_shared_from_this<cxxopts::value_base>' has accessible non-virtual
 // destructor
-# pragma GCC diagnostic ignored "-Wnon-virtual-dtor"
 # pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wnon-virtual-dtor"
 // This will be ignored under other compilers like LLVM clang.
 #endif
 class value_base : public std::enable_shared_from_this<value_base> {
