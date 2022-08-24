@@ -1,6 +1,6 @@
 /*
 
-Copyright (c) 2014, 2015, 2016, 2017 Jarryd Beck
+Copyright (c) 2014 - 2021 Jarryd Beck
 Copyright (c) 2021 - 2022 Pavel Artemkin
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -82,7 +82,7 @@ THE SOFTWARE.
 
 #define CXXOPTS__VERSION_MAJOR 5
 #define CXXOPTS__VERSION_MINOR 2
-#define CXXOPTS__VERSION_PATCH 3
+#define CXXOPTS__VERSION_PATCH 4
 
 namespace cxxopts {
 
@@ -299,7 +299,7 @@ class option_syntax_error : public parse_error {
 public:
   explicit option_syntax_error(const std::string& text)
     : parse_error("Argument " + LQUOTE + text + RQUOTE +
-                  " starts with a - but has incorrect syntax") {
+                  " starts with '-' but has incorrect syntax") {
   }
 };
 
@@ -1779,7 +1779,8 @@ public:
   /**
    * Generates help for the options.
    */
-  std::string help(const std::vector<std::string>& help_groups = {}) const {
+  std::string help(const std::vector<std::string>& help_groups = {},
+                   const bool print_usage = true) const {
     cxx_string result;
 
     if (!empty(help_string_)) {
@@ -1787,10 +1788,12 @@ public:
       result += '\n';
     }
 
-    result += "usage: ";
-    result += to_local_string(program_);
-    result += " ";
-    result += to_local_string(custom_help_);
+    if (print_usage) {
+      result += "usage: ";
+      result += to_local_string(program_);
+      result += " ";
+      result += to_local_string(custom_help_);
+    }
 
     if (!positional_.empty() && !positional_help_.empty()) {
       result += " ";
