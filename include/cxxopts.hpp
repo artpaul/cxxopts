@@ -826,10 +826,12 @@ protected:
   virtual void do_parse(const parse_context& ctx,
                         const std::string& text) const = 0;
 
-  void set_default_and_implicit() {
+  void set_default_and_implicit(const bool set_default) {
     if (is_boolean()) {
-      default_ = true;
-      default_value_ = "false";
+      if (set_default) {
+        default_ = true;
+        default_value_ = "false";
+      }
       implicit_ = true;
       implicit_value_ = "true";
       no_value_ = true;
@@ -868,12 +870,12 @@ public:
   basic_value()
     : result_(new T{})
     , store_(result_.get()) {
-    set_default_and_implicit();
+    set_default_and_implicit(true);
   }
 
   explicit basic_value(T* const t)
     : store_(t) {
-    set_default_and_implicit();
+    set_default_and_implicit(false);
   }
 
   const T& get() const {
