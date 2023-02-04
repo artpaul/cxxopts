@@ -167,15 +167,37 @@ options.add_options()
 
 ## Positional Arguments
 
-Positional arguments can be optionally parsed into one or more options.
-To set up positional arguments, call
+Positional arguments are those given without a preceding flag and can be used
+alongside non-positional arguments. There may be multiple positional arguments,
+and the final positional argument may be a container type to hold a list of all
+remaining positionals.
+
+To set up positional arguments, first declare the options, then configure a
+set of those arguments as positional like:
 
 ```cpp
-options.parse_positional("first", "second", "last")
+options.add_options()
+  ("script", "The script file to execute", cxxopts::value<std::string>())
+  ("server", "The server to execute on", cxxopts::value<std::string>())
+  ("filenames", "The filename(s) to process", cxxopts::value<std::vector<std::string>>());
+
+options.parse_positional("script", "server", "filenames");
+
+// Parse options the usual way
+options.parse(argc, argv);
 ```
 
-where "last" should be the name of an option with a container type, and the
-others should have a single value.
+For example, parsing the following arguments:
+~~~
+my_script.py my_server.com file1.txt file2.txt file3.txt
+~~~
+will result in parsed arguments like the following table:
+
+| Field         | Value                                     |
+| ------------- | ----------------------------------------- |
+| `"script"`    | `"my_script.py"`                          |
+| `"server"`    | `"my_server.com"`                         |
+| `"filenames"` | `{"file1.txt", "file2.txt", "file3.txt"}` |
 
 ## Unrecognised arguments
 
