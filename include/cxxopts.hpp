@@ -125,9 +125,14 @@ static inline cxx_string to_local_string(std::string s) {
   return icu::UnicodeString::fromUTF8(std::move(s));
 }
 
-class unicode_string_iterator
-  : public std::iterator<std::forward_iterator_tag, int32_t> {
+class unicode_string_iterator {
 public:
+  using value_type = int32_t;
+  using difference_type = std::ptrdiff_t;
+  using iterator_category = std::forward_iterator_tag;
+  using pointer = value_type*;
+  using reference = value_type&;
+
   unicode_string_iterator(const icu::UnicodeString* string, int32_t pos)
     : s(string)
     , i(pos) {
