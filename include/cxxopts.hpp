@@ -809,12 +809,12 @@ public:
   }
 
   /** Parses the given text into the value. */
-  void parse(const std::string& text) const {
+  void parse(const std::string& text) {
     return do_parse(parse_ctx_, text);
   }
 
   /** Parses the default value. */
-  void parse() const {
+  void parse() {
     return do_parse(parse_ctx_, default_value_);
   }
 
@@ -823,8 +823,7 @@ protected:
 
   virtual bool do_is_container() const noexcept = 0;
 
-  virtual void do_parse(const parse_context& ctx,
-                        const std::string& text) const = 0;
+  virtual void do_parse(const parse_context& ctx, const std::string& text) = 0;
 
   void set_default_and_implicit(const bool set_default) {
     if (is_boolean()) {
@@ -891,8 +890,7 @@ protected:
     return parser_type::is_container;
   }
 
-  void do_parse(const parse_context& ctx,
-                const std::string& text) const override {
+  void do_parse(const parse_context& ctx, const std::string& text) override {
     parser_type().parse(ctx, text, *store_);
   }
 
