@@ -99,9 +99,9 @@ static const std::string LQUOTE("‘");
 static const std::string RQUOTE("’");
 #endif
 
-static constexpr size_t OPTION_LONGEST = 30;
-static constexpr size_t OPTION_DESC_GAP = 2;
-static constexpr size_t OPTION_TAB_SIZE = 8;
+static constexpr std::size_t OPTION_LONGEST = 30;
+static constexpr std::size_t OPTION_DESC_GAP = 2;
+static constexpr std::size_t OPTION_TAB_SIZE = 8;
 
 #ifdef CXXOPTS_USE_UNICODE
 using cxx_string = icu::UnicodeString;
@@ -163,8 +163,10 @@ static inline cxx_string& string_append(cxx_string& s, cxx_string a) {
   return s.append(std::move(a));
 }
 
-static inline cxx_string& string_append(cxx_string& s, size_t n, UChar32 c) {
-  for (size_t i = 0; i != n; ++i) {
+static inline cxx_string& string_append(cxx_string& s,
+                                        std::size_t n,
+                                        UChar32 c) {
+  for (std::size_t i = 0; i != n; ++i) {
     s.append(c);
   }
 
@@ -183,7 +185,7 @@ static inline cxx_string& string_append(cxx_string& s,
   return s;
 }
 
-static inline size_t string_length(const cxx_string& s) {
+static inline std::size_t string_length(const cxx_string& s) {
   return s.length();
 }
 
@@ -229,7 +231,7 @@ static inline cxx_string& string_append(cxx_string& s, const cxx_string& a) {
   return s.append(a);
 }
 
-static inline cxx_string& string_append(cxx_string& s, size_t n, char c) {
+static inline cxx_string& string_append(cxx_string& s, std::size_t n, char c) {
   return s.append(n, c);
 }
 
@@ -965,7 +967,7 @@ public:
     return long_;
   }
 
-  size_t hash() const noexcept {
+  std::size_t hash() const noexcept {
     return hash_;
   }
 
@@ -1007,7 +1009,7 @@ private:
   std::string arg_help_;
   /// Description of the option.
   cxx_string desc_;
-  size_t hash_;
+  std::size_t hash_;
   std::shared_ptr<detail::value_base> value_;
 };
 
@@ -1021,7 +1023,7 @@ public:
    * the command line arguments.
    */
   CXXOPTS_NODISCARD
-  size_t count() const noexcept {
+  std::size_t count() const noexcept {
     return count_;
   }
 
@@ -1091,7 +1093,7 @@ private:
   // Holding this pointer is safe, since option_value's only exist
   // in key-value pairs, where the key has the string we point to.
   std::shared_ptr<detail::value_base> value_{};
-  size_t count_{0};
+  std::size_t count_{0};
   bool default_{false};
 };
 
@@ -1101,9 +1103,9 @@ private:
 class parse_result {
 public:
   /// Maps option name to hash of the name.
-  using name_hash_map = std::unordered_map<std::string, size_t>;
+  using name_hash_map = std::unordered_map<std::string, std::size_t>;
   /// Maps hash of an option name to the option value.
-  using parsed_hash_map = std::unordered_map<size_t, option_value>;
+  using parsed_hash_map = std::unordered_map<std::size_t, option_value>;
 
   class key_value {
   public:
@@ -1145,7 +1147,7 @@ public:
                parsed_hash_map&& values,
                std::vector<key_value>&& sequential,
                std::vector<std::string>&& unmatched_args,
-               size_t consumed)
+               std::size_t consumed)
     : keys_(std::move(keys))
     , values_(std::move(values))
     , sequential_(std::move(sequential))
@@ -1160,7 +1162,7 @@ public:
    * Returns a number of occurrences of the option in
    * the command line arguments.
    */
-  size_t count(const std::string& name) const {
+  std::size_t count(const std::string& name) const {
     const auto ki = keys_.find(name);
     if (ki == keys_.end()) {
       return 0;
@@ -1202,7 +1204,7 @@ public:
   /**
    * Returns number of consumed command line arguments.
    */
-  size_t consumed() const {
+  std::size_t consumed() const {
     return consumed_arguments_;
   }
 
@@ -1220,7 +1222,7 @@ private:
   /// List of arguments that did not match to any defined option.
   std::vector<std::string> unmatched_{};
   /// Number of consument command line arguments.
-  size_t consumed_arguments_{0};
+  std::size_t consumed_arguments_{0};
 };
 
 namespace detail {
@@ -1494,7 +1496,7 @@ private:
     // Long option starts with '--'.
     if (*p == '-') {
       ++p;
-      if (isalnum(*p) && *(p + 1) != 0) {
+      if (std::isalnum(*p) && *(p + 1) != 0) {
         data.is_long = true;
         data.name += *p;
         ++p;
@@ -1508,7 +1510,7 @@ private:
           data.value.assign(p, end);
           break;
         }
-        if (*p == '-' || *p == '_' || isalnum(*p)) {
+        if (*p == '-' || *p == '_' || std::isalnum(*p)) {
           data.name += *p;
         } else {
           return false;
@@ -1518,7 +1520,7 @@ private:
     } else {
       // Single char short option should start with an alnum or
       // be a question mark.
-      if (!(isalnum(*p) || (*p == '?' && *(p + 1) == 0))) {
+      if (!(std::isalnum(*p) || (*p == '?' && *(p + 1) == 0))) {
         return false;
       }
       // Copy the whole string and interpret it later as
@@ -1621,7 +1623,7 @@ public:
       }
       // Short option.
       if (*(p + 1) == 0 || *(p + 1) == ',') {
-        if (*p == '?' || isalnum(*p)) {
+        if (*p == '?' || std::isalnum(*p)) {
           s = *p;
           ++p;
         } else {
@@ -1646,12 +1648,12 @@ public:
         l.reserve((text.c_str() + text.size()) - p);
       }
       // First char of an option name should be alnum.
-      if (isalnum(*p)) {
+      if (std::isalnum(*p)) {
         l += *p;
         ++p;
       }
       for (; *p; ++p) {
-        if (*p == '-' || *p == '_' || isalnum(*p)) {
+        if (*p == '-' || *p == '_' || std::isalnum(*p)) {
           l += *p;
         } else {
           return false;
@@ -1739,7 +1741,7 @@ public:
     return *this;
   }
 
-  options& set_width(size_t width) {
+  options& set_width(std::size_t width) {
     width_ = width;
     return *this;
   }
@@ -1901,8 +1903,8 @@ private:
   }
 
   cxx_string format_description(const option_details& o,
-                                size_t start,
-                                size_t allowed,
+                                std::size_t start,
+                                std::size_t allowed,
                                 bool tab_expansion) const {
     cxx_string desc = o.description();
 
@@ -1931,7 +1933,7 @@ private:
     }
 
     option_help format;
-    size_t longest = 0;
+    std::size_t longest = 0;
     cxx_string result;
 
     if (!group_name.empty()) {
@@ -1956,7 +1958,7 @@ private:
     longest = std::min(longest, OPTION_LONGEST);
 
     // widest allowed description -- min 10 chars for helptext/line
-    size_t allowed = 10;
+    std::size_t allowed = 10;
     if (width_ > allowed + longest + OPTION_DESC_GAP) {
       allowed = width_ - longest - OPTION_DESC_GAP;
     }
@@ -1982,7 +1984,7 @@ private:
 
   void generate_group_help(cxx_string& result,
                            const std::vector<std::string>& print_groups) const {
-    for (size_t i = 0; i != print_groups.size(); ++i) {
+    for (std::size_t i = 0; i != print_groups.size(); ++i) {
       const cxx_string& group_help_text = help_one_group(print_groups[i]);
       if (empty(group_help_text)) {
         continue;
@@ -2001,7 +2003,7 @@ private:
   cxx_string expand_tab_character(const cxx_string& text) const {
     cxx_string result;
     cxx_string::const_iterator pi = std::begin(text);
-    size_t size = 0;
+    std::size_t size = 0;
     // Preallocate result buffer.
     result.reserve(text.size());
     // Process source string.
@@ -2009,7 +2011,7 @@ private:
       if (*ci == '\n') {
         size = 0;
       } else if (*ci == '\t') {
-        const size_t skip = OPTION_TAB_SIZE - size % OPTION_TAB_SIZE;
+        const std::size_t skip = OPTION_TAB_SIZE - size % OPTION_TAB_SIZE;
         result.append(pi, ci);
         string_append(result, skip, ' ');
         size += skip;
@@ -2025,8 +2027,8 @@ private:
   }
 
   cxx_string wrap_string(const cxx_string& desc,
-                         const size_t start,
-                         const size_t allowed) const {
+                         const std::size_t start,
+                         const std::size_t allowed) const {
     cxx_string result;
 
     // Nothing to wrap for empty string.
@@ -2038,7 +2040,7 @@ private:
     auto previous = current;
     auto start_line = current;
     auto last_space = current;
-    auto size = size_t{};
+    auto size = std::size_t{};
     bool only_whitespace = true;
 
     result.reserve(desc.size());
@@ -2115,7 +2117,7 @@ private:
   std::string custom_help_;
   std::string positional_help_;
   std::string footer_{};
-  size_t width_{76};
+  std::size_t width_{76};
   /// Allow consume unrecognized options
   /// instead of throwing an error.
   bool allow_unrecognised_{false};
