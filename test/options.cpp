@@ -333,7 +333,7 @@ TEST_CASE("Question mark help", "[options]") {
   }
 
   SECTION("Invalid use of qestion mark") {
-    Argv argv({"test_short", "-v?"});
+    Argv argv({"test_short", "-?v"});
     CHECK_THROWS_AS(options.parse(argv.argc(), argv.argv()), cxxopts::option_syntax_error&);
   }
 }
@@ -424,9 +424,11 @@ TEST_CASE("Short options", "[options]") {
   cxxopts::options options("test_short", " - test short options");
 
   options.add_options()
-    ("a", "a short option", cxxopts::value<std::string>());
+    ("a", "a short option", cxxopts::value<std::string>())
+    ("b", "b option")
+    ("c", "c option", cxxopts::value<std::string>());
 
-  const Argv argv({"test_short", "-a", "value"});
+  const Argv argv({"test_short", "-a", "value", "-bcfoo=something"});
   const auto result = options.parse(argv.argc(), argv.argv());
   const auto& arguments = result.arguments();
 
@@ -434,9 +436,14 @@ TEST_CASE("Short options", "[options]") {
   CHECK(result["a"].as<std::string>() == "value");
   CHECK(result.consumed() == argv.argc());
 
-  REQUIRE(arguments.size() == 1);
+  REQUIRE(arguments.size() == 3);
   CHECK(arguments[0].key() == "a");
   CHECK(arguments[0].value() == "value");
+
+  CHECK(result.count("b") == 1);
+  CHECK(result.count("c") == 1);
+
+  CHECK(result["c"].as<std::string>() == "foo=something");
 
   REQUIRE_THROWS_AS(options.add_options()("", "nothing option"),
     cxxopts::invalid_option_format_error&);
@@ -869,7 +876,7 @@ TEST_CASE("Allow bad short syntax", "[options]") {
     ("long", "a long option")
     ("s,short", "a short option");
 
-  const Argv argv({"unknown_options", "-some_bad_short"});
+  const Argv argv({"--ab?", "-?b?#@"});
 
   SECTION("Default behaviour") {
     CHECK_THROWS_AS(options.parse(argv.argc(), argv.argv()),
@@ -879,7 +886,7 @@ TEST_CASE("Allow bad short syntax", "[options]") {
   SECTION("After allowing unrecognised options") {
     options.allow_unrecognised_options();
     CHECK_NOTHROW(options.parse(argv.argc(), argv.argv()));
-    CHECK_THAT(argv.argv()[1], Catch::Equals("-some_bad_short"));
+    CHECK_THAT(argv.argv()[1], Catch::Equals("-?b?#@"));
   }
 }
 

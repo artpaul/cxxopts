@@ -1294,45 +1294,43 @@ public:
         }
         // If we return from here then it was parsed successfully, so
         // continue.
-      } else {
-        // Short or long option?
-        if (result.is_long == false) {
-          const std::string& seq = result.name;
-          // Iterate over the sequence of short options.
-          for (std::size_t i = 0; i != seq.size(); ++i) {
-            const std::string name(1, seq[i]);
-            const auto oi = options_.find(name);
+      } else if (result.is_long) {
+        // Long option.
+        const std::string& name = result.name;
+        const auto oi = options_.find(name);
 
-            if (oi == options_.end()) {
-              if (allow_unrecognised_) {
-                unmatched.push_back(std::string("-") + seq[i]);
-                continue;
-              }
-              // Error.
-              detail::throw_or_mimic<option_not_exists_error>(name);
-            }
-
-            const auto& opt = oi->second;
-            if (i + 1 == seq.size()) {
-              // It must be the last argument.
-              checked_parse_arg(argc, argv, current, opt, name);
-            } else if (opt->has_implicit()) {
-              parse_option(opt, opt->implicit_value());
-            } else {
-              parse_option(opt, seq.substr(i + 1));
-              break;
-            }
+        if (oi == options_.end()) {
+          if (allow_unrecognised_) {
+            // Keep unrecognised options in argument list,
+            // skip to next argument.
+            unmatched.emplace_back(argv[current]);
+            ++current;
+            continue;
           }
+          // Error.
+          detail::throw_or_mimic<option_not_exists_error>(name);
+        }
+
+        const auto& opt = oi->second;
+        // Equal sign provided for the long option?
+        if (result.has_value) {
+          // Parse the option given.
+          parse_option(opt, result.value);
         } else {
-          const std::string& name = result.name;
+          // Parse the next argument.
+          checked_parse_arg(argc, argv, current, opt, name);
+        }
+      } else {
+        // Single short option or a group of short options.
+        const std::string& seq = result.name;
+        // Iterate over the sequence of short options.
+        for (std::size_t i = 0; i != seq.size(); ++i) {
+          const std::string name(1, seq[i]);
           const auto oi = options_.find(name);
 
           if (oi == options_.end()) {
             if (allow_unrecognised_) {
-              // Keep unrecognised options in argument list,
-              // skip to next argument.
-              unmatched.emplace_back(argv[current]);
-              ++current;
+              unmatched.push_back(std::string("-") + seq[i]);
               continue;
             }
             // Error.
@@ -1340,13 +1338,14 @@ public:
           }
 
           const auto& opt = oi->second;
-          // Equal sign provided for the long option?
-          if (result.has_value) {
-            // Parse the option given.
-            parse_option(opt, result.value);
-          } else {
-            // Parse the next argument.
+          if (i + 1 == seq.size()) {
+            // It must be the last argument.
             checked_parse_arg(argc, argv, current, opt, name);
+          } else if (opt->has_implicit()) {
+            parse_option(opt, opt->implicit_value());
+          } else {
+            parse_option(opt, seq.substr(i + 1));
+            break;
           }
         }
       }
@@ -1485,12 +1484,13 @@ private:
 
   bool parse_argument(const std::string& text, option_data& data) const {
     const char* p = text.c_str();
-    // String should not be empty and should starts with '-'.
-    if (*p == 0 || *p != '-') {
+    const char* end = text.c_str() + text.size();
+    // The string should be at least two character long and starts with '-'.
+    if (*p == 0 || *(p + 1) == 0 || *p != '-') {
       return false;
-    } else {
-      ++p;
     }
+    // Skip the '-'.
+    ++p;
     // Long option starts with '--'.
     if (*p == '-') {
       ++p;
@@ -1505,7 +1505,7 @@ private:
         if (*p == '=') {
           ++p;
           data.has_value = true;
-          data.value.assign(p, text.c_str() + text.size());
+          data.value.assign(p, end);
           break;
         }
         if (*p == '-' || *p == '_' || isalnum(*p)) {
@@ -1515,24 +1515,15 @@ private:
         }
       }
       return data.name.size() > 1;
-      // Short option.
     } else {
-      // Single char short option.
-      if (*(p + 1) == 0) {
-        if (*p == '?' || isalnum(*p)) {
-          data.name = *p;
-          return true;
-        }
+      // Single char short option should start with an alnum or
+      // be a question mark.
+      if (!(isalnum(*p) || (*p == '?' && *(p + 1) == 0))) {
         return false;
       }
-      // Multiple short options.
-      for (; *p; ++p) {
-        if (isalnum(*p)) {
-          data.name += *p;
-        } else {
-          return false;
-        }
-      }
+      // Copy the whole string and interpret it later as
+      // a group of short options.
+      data.name.assign(p, end);
       return true;
     }
     return false;
