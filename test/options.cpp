@@ -348,6 +348,7 @@ TEST_CASE("Basic options", "[options]") {
     ("a,av", "a short option with a value", cxxopts::value<std::string>())
     ("6,six", "a short number option")
     ("p, space", "an option with space between short and long")
+    ("period.delimited", "an option with a period in the long name")
     ("nothing", "won't exist", cxxopts::value<std::string>())
     ;
 
@@ -362,6 +363,7 @@ TEST_CASE("Basic options", "[options]") {
     "-6",
     "-p",
     "--space",
+    "--period.delimited",
   });
 
   const auto result = options.parse(argv.argc(), argv.argv());
@@ -375,9 +377,10 @@ TEST_CASE("Basic options", "[options]") {
   CHECK(result.count("6") == 1);
   CHECK(result.count("p") == 2);
   CHECK(result.count("space") == 2);
+  CHECK(result.count("period.delimited") == 1);
 
   const auto& arguments = result.arguments();
-  REQUIRE(arguments.size() == 7);
+  REQUIRE(arguments.size() == 8);
   CHECK(arguments[0].key() == "long");
   CHECK(arguments[0].value() == "true");
   CHECK(arguments[0].as<bool>() == true);

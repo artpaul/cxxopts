@@ -1510,7 +1510,7 @@ private:
           data.value.assign(p, end);
           break;
         }
-        if (*p == '-' || *p == '_' || std::isalnum(*p)) {
+        if (*p == '-' || *p == '_' || *p == '.' || std::isalnum(*p)) {
           data.name += *p;
         } else {
           return false;
@@ -1653,7 +1653,7 @@ public:
         ++p;
       }
       for (; *p; ++p) {
-        if (*p == '-' || *p == '_' || std::isalnum(*p)) {
+        if (*p == '-' || *p == '_' || *p == '.' || std::isalnum(*p)) {
           l += *p;
         } else {
           return false;
