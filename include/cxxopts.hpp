@@ -1,7 +1,7 @@
 /*
 
 Copyright (c) 2014 - 2021 Jarryd Beck
-Copyright (c) 2021 - 2022 Pavel Artemkin
+Copyright (c) 2021 - 2023 Pavel Artemkin
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -67,6 +67,12 @@ THE SOFTWARE.
 # define CXXOPTS_NODISCARD
 #endif
 
+#if __cplusplus >= 202002L
+# define CXXOPTS_CONSTEXPR constexpr
+#else
+# define CXXOPTS_CONSTEXPR
+#endif
+
 // Disable exceptions if the specific compiler flags are set.
 #if !(defined(__cpp_exceptions) || defined(__EXCEPTIONS) || defined(_CPPUNWIND))
 # define CXXOPTS_NO_EXCEPTIONS
@@ -81,8 +87,8 @@ THE SOFTWARE.
 #endif
 
 #define CXXOPTS__VERSION_MAJOR 5
-#define CXXOPTS__VERSION_MINOR 2
-#define CXXOPTS__VERSION_PATCH 4
+#define CXXOPTS__VERSION_MINOR 3
+#define CXXOPTS__VERSION_PATCH 1
 
 namespace cxxopts {
 
@@ -228,22 +234,25 @@ static inline T to_local_string(T&& t) {
   return std::forward<T>(t);
 }
 
-static inline size_t string_length(const cxx_string& s) {
+CXXOPTS_CONSTEXPR
+static inline size_t string_length(const cxx_string& s) noexcept {
   return s.length();
 }
 
+CXXOPTS_CONSTEXPR
 static inline cxx_string& string_append(cxx_string& s, const cxx_string& a) {
   return s.append(a);
 }
 
+CXXOPTS_CONSTEXPR
 static inline cxx_string& string_append(cxx_string& s, std::size_t n, char c) {
   return s.append(n, c);
 }
 
 template <typename Iterator>
-static inline cxx_string& string_append(cxx_string& s,
-                                        Iterator begin,
-                                        Iterator end) {
+CXXOPTS_CONSTEXPR static inline cxx_string& string_append(cxx_string& s,
+                                                          Iterator begin,
+                                                          Iterator end) {
   return s.append(begin, end);
 }
 
@@ -252,7 +261,8 @@ static inline std::string to_utf8_string(T&& t) {
   return std::forward<T>(t);
 }
 
-static inline bool empty(const std::string& s) {
+CXXOPTS_CONSTEXPR
+static inline bool empty(const std::string& s) noexcept {
   return s.empty();
 }
 
@@ -398,7 +408,8 @@ struct signed_check;
 template <typename T>
 struct signed_check<T, true> {
   template <typename U>
-  bool operator()(const U u, const bool negative) const noexcept {
+  CXXOPTS_CONSTEXPR bool operator()(const U u,
+                                    const bool negative) const noexcept {
     return ((static_cast<U>(std::numeric_limits<T>::min()) >= u) && negative) ||
            (static_cast<U>(std::numeric_limits<T>::max()) >= u);
   }
@@ -407,18 +418,21 @@ struct signed_check<T, true> {
 template <typename T>
 struct signed_check<T, false> {
   template <typename U>
-  bool operator()(const U, const bool) const noexcept {
+  CXXOPTS_CONSTEXPR bool operator()(const U, const bool) const noexcept {
     return true;
   }
 };
 
 template <typename T, typename U>
-inline bool check_signed_range(const U value, const bool negative) noexcept {
+CXXOPTS_CONSTEXPR inline bool check_signed_range(const U value,
+                                                 const bool negative) noexcept {
   return signed_check<T, std::numeric_limits<T>::is_signed>()(value, negative);
 }
 
 template <typename R, typename T>
-inline bool checked_negate(R& r, T&& t, std::true_type) noexcept {
+CXXOPTS_CONSTEXPR inline bool checked_negate(R& r,
+                                             T&& t,
+                                             std::true_type) noexcept {
   // if we got to here, then `t` is a positive number that fits into
   // `R`. So to avoid MSVC C4146, we first cast it to `R`.
   // See https://github.com/jarro2783/cxxopts/issues/62 for more details.
@@ -427,7 +441,9 @@ inline bool checked_negate(R& r, T&& t, std::true_type) noexcept {
 }
 
 template <typename R, typename T>
-inline bool checked_negate(R&, T&&, std::false_type) noexcept {
+CXXOPTS_CONSTEXPR inline bool checked_negate(R&,
+                                             T&&,
+                                             std::false_type) noexcept {
   return false;
 }
 
@@ -702,35 +718,42 @@ public:
   virtual ~value_base() = default;
 
   /** Returns whether the default value was set. */
+  CXXOPTS_NODISCARD
   bool has_default() const noexcept {
     return default_;
   }
 
   /** Returns whether the env variable was set. */
+  CXXOPTS_NODISCARD
   bool has_env() const noexcept {
     return env_;
   }
 
   /** Returns whether the implicit value was set. */
+  CXXOPTS_NODISCARD
   bool has_implicit() const noexcept {
     return implicit_;
   }
 
   /** Returns default value. */
-  const std::string& get_default_value() const {
+  CXXOPTS_NODISCARD
+  const std::string& get_default_value() const noexcept {
     return default_value_;
   }
 
   /** Returns env variable. */
-  const std::string& get_env_var() const {
+  CXXOPTS_NODISCARD
+  const std::string& get_env_var() const noexcept {
     return env_var_;
   }
 
   /** Returns implicit value. */
-  const std::string& get_implicit_value() const {
+  CXXOPTS_NODISCARD
+  const std::string& get_implicit_value() const noexcept {
     return implicit_value_;
   }
 
+  CXXOPTS_NODISCARD
   bool get_no_value() const noexcept {
     return no_value_;
   }
@@ -877,7 +900,7 @@ public:
     set_default_and_implicit(false);
   }
 
-  const T& get() const {
+  const T& get() const noexcept {
     return *store_;
   }
 
@@ -943,12 +966,12 @@ public:
   }
 
   CXXOPTS_NODISCARD
-  const std::string& arg_help() const {
+  const std::string& arg_help() const noexcept {
     return arg_help_;
   }
 
   CXXOPTS_NODISCARD
-  const cxx_string& description() const {
+  const cxx_string& description() const noexcept {
     return desc_;
   }
 
@@ -958,31 +981,32 @@ public:
   }
 
   CXXOPTS_NODISCARD
-  const std::string& canonical_name() const {
+  const std::string& canonical_name() const noexcept {
     return long_.empty() ? short_ : long_;
   }
 
   CXXOPTS_NODISCARD
-  const std::string& short_name() const {
+  const std::string& short_name() const noexcept {
     return short_;
   }
 
   CXXOPTS_NODISCARD
-  const std::string& long_name() const {
+  const std::string& long_name() const noexcept {
     return long_;
   }
 
+  CXXOPTS_NODISCARD
   std::size_t hash() const noexcept {
     return hash_;
   }
 
   CXXOPTS_NODISCARD
-  const std::string& default_value() const {
+  const std::string& default_value() const noexcept {
     return value_->get_default_value();
   }
 
   CXXOPTS_NODISCARD
-  const std::string& implicit_value() const {
+  const std::string& implicit_value() const noexcept {
     return value_->get_implicit_value();
   }
 
@@ -1114,18 +1138,18 @@ public:
 
   class key_value {
   public:
-    key_value(std::string key, std::string value)
+    key_value(std::string key, std::string value) noexcept
       : key_(std::move(key))
       , value_(std::move(value)) {
     }
 
     CXXOPTS_NODISCARD
-    const std::string& key() const {
+    const std::string& key() const noexcept {
       return key_;
     }
 
     CXXOPTS_NODISCARD
-    const std::string& value() const {
+    const std::string& value() const noexcept {
       return value_;
     }
 
@@ -1167,6 +1191,7 @@ public:
    * Returns a number of occurrences of the option in
    * the command line arguments.
    */
+  CXXOPTS_NODISCARD
   std::size_t count(const std::string& name) const {
     const auto ki = keys_.find(name);
     if (ki == keys_.end()) {
@@ -1181,6 +1206,7 @@ public:
     return vi->second.count();
   }
 
+  CXXOPTS_NODISCARD
   bool has(const std::string& name) const {
     return count(name) != 0;
   }
@@ -1202,21 +1228,24 @@ public:
   /**
    * Returns list of recognized options with non empty value.
    */
-  const std::vector<key_value>& arguments() const {
+  CXXOPTS_NODISCARD
+  const std::vector<key_value>& arguments() const noexcept {
     return sequential_;
   }
 
   /**
    * Returns number of consumed command line arguments.
    */
-  std::size_t consumed() const {
+  CXXOPTS_NODISCARD
+  std::size_t consumed() const noexcept {
     return consumed_arguments_;
   }
 
   /**
    * Returns list of unmatched arguments.
    */
-  const std::vector<std::string>& unmatched() const {
+  CXXOPTS_NODISCARD
+  const std::vector<std::string>& unmatched() const noexcept {
     return unmatched_;
   }
 
@@ -1426,7 +1455,7 @@ private:
     return false;
   }
 
-  bool is_dash_dash(const char* str) const {
+  bool is_dash_dash(const char* str) const noexcept {
     return (str[0] != 0 && str[0] == '-') && (str[1] != 0 && str[1] == '-') &&
            (str[2] == 0);
   }
@@ -1591,7 +1620,7 @@ public:
 
   class option_adder {
   public:
-    option_adder(const std::string group, options& options)
+    option_adder(std::string group, options& options) noexcept
       : group_(std::move(group))
       , options_(options) {
     }
@@ -1702,17 +1731,17 @@ public:
     return option_adder(std::move(group), *this);
   }
 
-  options& allow_unrecognised_options(const bool value = true) {
+  options& allow_unrecognised_options(const bool value = true) noexcept {
     allow_unrecognised_ = value;
     return *this;
   }
 
-  options& custom_help(std::string help_text) {
+  options& custom_help(std::string help_text) noexcept {
     custom_help_ = std::move(help_text);
     return *this;
   }
 
-  options& footer(std::string text) {
+  options& footer(std::string text) noexcept {
     footer_ = std::move(text);
     return *this;
   }
@@ -1736,22 +1765,22 @@ public:
       std::unordered_set<std::string>(positional_.begin(), positional_.end());
   }
 
-  options& positional_help(std::string help_text) {
+  options& positional_help(std::string help_text) noexcept {
     positional_help_ = std::move(help_text);
     return *this;
   }
 
-  options& set_tab_expansion(bool expansion = true) {
+  options& set_tab_expansion(bool expansion = true) noexcept {
     tab_expansion_ = expansion;
     return *this;
   }
 
-  options& set_width(std::size_t width) {
+  options& set_width(std::size_t width) noexcept {
     width_ = width;
     return *this;
   }
 
-  options& show_positional_help(const bool value = true) {
+  options& show_positional_help(const bool value = true) noexcept {
     show_positional_ = value;
     return *this;
   }
@@ -1759,7 +1788,7 @@ public:
   /**
    * Stop parsing at first positional argument.
    */
-  options& stop_on_positional(const bool value = true) {
+  options& stop_on_positional(const bool value = true) noexcept {
     stop_on_positional_ = value;
     return *this;
   }
@@ -1833,7 +1862,7 @@ public:
     return help_.at(group);
   }
 
-  const std::string& program() const {
+  const std::string& program() const noexcept {
     return program_;
   }
 
