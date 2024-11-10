@@ -1847,15 +1847,7 @@ public:
    * Returns list of the defined groups.
    */
   std::vector<std::string> groups() const {
-    std::vector<std::string> names;
-
-    names.reserve(help_.size());
-
-    for (auto hi = help_.cbegin(); hi != help_.cend(); ++hi) {
-      names.push_back(hi->first);
-    }
-
-    return names;
+    return group_names_;
   }
 
   const help_group_details& group_help(const std::string& group) const {
@@ -1883,6 +1875,9 @@ private:
       add_one_option(l, details);
     }
 
+    if (help_.find(group) == help_.end()) {
+      group_names_.push_back(group);
+    }
     // Add the help details.
     help_[group].options.push_back(std::move(details));
   }
@@ -2031,7 +2026,7 @@ private:
   }
 
   void generate_all_groups_help(cxx_string& result) const {
-    generate_group_help(result, groups());
+    generate_group_help(result, group_names_);
   }
 
   cxx_string expand_tab_character(const cxx_string& text) const {
@@ -2171,6 +2166,8 @@ private:
   std::unordered_set<std::string> positional_set_{};
   /// Mapping from groups to help options.
   std::map<std::string, help_group_details> help_{};
+  /// Unique names of groups in order defined by user.
+  std::vector<std::string> group_names_{};
 };
 
 } // namespace cxxopts
